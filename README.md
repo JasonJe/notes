@@ -114,6 +114,12 @@
 
 ### 3.4 动态网页请求
 
+### 3.4.1 [Ajax和动态HTML](网络爬虫/动态网页请求.md)
+
+### 3.4.2 [PhantomJS和Selenium](网络爬虫/动态网页请求.md#342-PhantomJS和Selenium)
+
+### 3.4.3 [Selenium简明教程](网络爬虫/动态网页请求.md#343-Selenium简明教程)
+
 ### 3.5 Scrapy
 
 ### 3.6 如何更好地采集
