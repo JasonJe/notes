@@ -106,7 +106,11 @@
 
 #### 3.2.2 [Requests简明教程](网络爬虫/网络资源请求和Requests.md#322-Requests简明教程)
 
-### 3.3 HTML内容解析和BeautifulSoup
+### 3.3 [HTML内容解析和BeautifulSoup](网络爬虫/HTML内容解析和BeautifulSoup.md)
+
+#### 3.3.1 [HTML解析器](网络爬虫/HTML内容解析和BeautifulSoup.md#331-HTML解析器)
+
+#### 3.3.2 [BeautifulSoup简明教程](网络爬虫/HTML内容解析和BeautifulSoup.md#332-BeautifulSoup简明教程)
 
 ### 3.4 动态网页请求
 
