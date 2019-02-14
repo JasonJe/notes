@@ -126,11 +126,23 @@
 
 #### 3.5.2 [Scrapy简明教程](网络爬虫/Scrapy.md#352-Scrapy简明教程)
 
-### 3.6 如何更好地采集
+## 4. Web开发
+
+### 4.1 [Flask](Web开发/Flask.md)
+
+#### 4.1.1 [简明教程](Web开发/Flask.md#411-简明教程)
+
+#### 4.1.2 [上下文和线程安全](Web开发/Flask.md#412-上下文和线程安全)
+
+#### 4.1.3 [路由规则](Web开发/Flask.md#413-路由规则)
+
+### 4.2 Django
+
+## 分布式系统
+
+## Celery
 
 ## Elasticsearch
-
-## Flask、Django
 
 ## Redis、RabbitMQ，MongoDB、PostgreSQL 数据库+ 消息中间件 + 缓存
 
