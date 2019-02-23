@@ -743,6 +743,8 @@ SHOW ENGINES;
 
 [【干货】MySQL数据库开发规范](https://juejin.im/post/5c15c2b3f265da6170070613)
 
+[支撑日活百万用户的高并发系统，应该如何设计其数据库架构？【石杉的架构笔记】](https://juejin.im/post/5c6a9f25518825787e69e70a?utm_source=gold_browser_extension)
+
 *待续补充...*
 
 参考链接：
