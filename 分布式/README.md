@@ -8,7 +8,7 @@
 
 ### 6.1.3 [消息模型](消息队列.md#613-消息模型)
 
-### 6.1.4 [`AMQP` 和 `RabbitMQ`](消息队列.md#614-AMQP和RabbitMQ)
+### 6.1.4 [`AMQP` 和 `RabbitMQ`](消息队列.md#614-amqp-和-rabbitmq)
 
 ### 6.1.5 `Redis`消息队列
 
