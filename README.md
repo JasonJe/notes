@@ -84,17 +84,17 @@ Linux 的 awk、grep、sed
 </details>
 
 <details>
-<summary>:mortar_board: 面试题目整理</summary>
+<summary>:mortar_board: 题目整理</summary>
 
-#### [算法与数据结构](面试题目整理/算法与数据结构.md)
+#### [算法与数据结构](题目整理/算法与数据结构.md)
 
-#### [操作系统](面试题目整理/操作系统.md)
+#### [操作系统](题目整理/操作系统.md)
 
-#### [网络](面试题目整理/网络.md)
+#### [网络](题目整理/网络.md)
 
-#### [数据库](面试题目整理/数据库.md)
+#### [数据库](题目整理/数据库.md)
 
-#### [Python](面试题目整理/Python.md)
+#### [Python](题目整理/Python.md)
 
 </details>
 
