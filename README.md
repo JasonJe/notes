@@ -2,6 +2,8 @@
 
 ![](./assets/images/00.jpg)
 
+[![](https://img.shields.io/badge/简书-JasonJe-eb6f5a.svg)](https://www.jianshu.com/u/03a09a744c7f)
+
 <details>
 <summary>:snake: 1. Python 高级编程</summary>
 
@@ -19,6 +21,8 @@
 
 <details>
 <summary>:books: 2. 算法</summary>
+
+#### 2.1 [数据结构](算法/数据结构.md)
 
 #### 2.2 [经典算法](算法/经典算法.md)
 
