@@ -2,9 +2,7 @@
 
 ![](./assets/images/00.jpg)
 
-[![](https://img.shields.io/badge/简书-JasonJe-eb6f5a.svg)](https://www.jianshu.com/u/03a09a744c7f)
-
-![](http://progressed.io/bar/58)
+[![](https://img.shields.io/badge/简书-JasonJe-eb6f5a.svg)](https://www.jianshu.com/u/03a09a744c7f) ![](http://progressed.io/bar/56?title=进度)
 
 <details>
 <summary>:snake: 1. Python 高级编程</summary>
