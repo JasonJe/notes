@@ -2,10 +2,10 @@
 
 ![](./assets/images/00.jpg)
 
-[![](https://img.shields.io/badge/简书-JasonJe-eb6f5a.svg)](https://www.jianshu.com/u/03a09a744c7f) ![](http://progressed.io/bar/56?title=进度)
+<center> ![](http://progressed.io/bar/56?title=进度) </center>
 
 <details>
-<summary>:snake: 1. Python 高级编程</summary>
+<summary><strong>:snake: 1. Python 高级编程</strong></summary>
 
 #### 1.1 [面向对象](Python高级编程/面向对象.md)
 
@@ -20,7 +20,7 @@
 </details>
 
 <details>
-<summary>:books: 2. 算法</summary>
+<summary><strong>:books: 2. 算法</strong></summary>
 
 #### 2.1 [数据结构](算法/数据结构.md)
 
@@ -29,7 +29,7 @@
 </details>
 
 <details>
-<summary>:octopus: 3. 网络爬虫</summary>
+<summary><strong>:octopus: 3. 网络爬虫</strong></summary>
 
 #### 3.1 [从输入URL到打开网页](网络爬虫/从输入URL到打开网页.md)
 
@@ -44,7 +44,7 @@
 </details>
 
 <details>
-<summary>:computer: 4. Web开发</summary>
+<summary><strong>:computer: 4. Web开发</strong></summary>
 
 #### 4.1 [Flask](Web开发/Flask.md)
 
@@ -53,7 +53,7 @@
 </details>
 
 <details>
-<summary>:file_folder: 5. 数据库</summary>
+<summary><strong>:file_folder: 5. 数据库</strong></summary>
 
 #### 5.1 [数据库系统原理](数据库/数据库系统原理.md)
 
@@ -70,14 +70,14 @@
 </details>
 
 <details>
-<summary>:electric_plug: 6. 分布式</summary>
+<summary><strong>:electric_plug: 6. 分布式</strong></summary>
 
 #### 6.1 [消息队列](分布式/消息队列.md)
 
 </details>
 
 <details>
-<summary>:chart_with_upwards_trend: 7. 数据分析</summary>
+<summary><strong>:chart_with_upwards_trend: 7. 数据分析</strong></summary>
 
 #### 7.1 [统计学基础](数据分析/统计学基础.md)
 
@@ -88,7 +88,7 @@ Linux 的 awk、grep、sed
 </details>
 
 <details>
-<summary>:mortar_board: 题目整理</summary>
+<summary><strong>:mortar_board: 题目整理</strong></summary>
 
 #### [算法与数据结构](题目整理/算法与数据结构.md)
 

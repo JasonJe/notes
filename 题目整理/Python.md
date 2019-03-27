@@ -368,3 +368,5 @@ def super(cls, inst):
 2) 协程上下文的切换。基本上`Python` 生成器的 `yield` 已经能完成切换，`Python3`中还有特定语法支持协程切换。
 
 ## `Python` 绕过 `GIL` 加速方案
+
+## 判断一个值是否在数组里，用`set`快还是`list`快
