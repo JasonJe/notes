@@ -2,7 +2,7 @@
 
 ![](./assets/images/00.jpg)
 
-<center> ![](http://progressed.io/bar/56?title=进度) </center>
+![](http://progressed.io/bar/56?title=进度)
 
 <details>
 <summary><strong>:snake: 1. Python 高级编程</strong></summary>
