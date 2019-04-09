@@ -83,6 +83,8 @@
 
 #### 7.2 [数据分析方法](数据分析/数据分析方法.md)
 
+#### 7.3 [`Numpy`](数据分析/Numpy.md)
+
 Linux 的 awk、grep、sed
 
 </details>
