@@ -162,6 +162,18 @@ Name: series_name, dtype: float64
 0     a       1    100
 1     b       1    100
 2     b       2    200
+>>> df.tail() # 展示最后 5 行数据
+  first  second  thrid
+1     b       1    100
+2     b       2    200
+3     c       1    200
+4     c       2    300
+5     c       3    300
+>>> df.tail(3) # 展示最后 3 行数据
+  first  second  thrid
+3     c       1    200
+4     c       2    300
+5     c       3    300
 >>>
 >>> pd.DataFrame(data, columns = ['thrid', 'second', 'first']) # 指定列顺序
    thrid  second first
@@ -803,10 +815,628 @@ four     0.0     1.0    2.0
 
 * 函数应用和映射
 
+可以将`NumPy`的`ufunc`应用于`Pandas`对象
+
+```python
+>>> import pandas as pd
+>>> import numpy as np
+>>>
+>>> df = pd.DataFrame(np.random.randn(4, 3), columns = ['first', 'second', 'thrid'], index = ['one', 'two', 'three', 'four'])
+>>> df
+          first    second     thrid
+one   -0.519511  0.301790 -1.168141
+two    0.184956 -1.075827 -0.269703
+three -0.347362  0.811374 -0.053796
+four  -0.046029  0.031835 -0.160494
+>>>
+>>> np.abs(df) # 使用 ufunc
+          first    second     thrid
+one    0.519511  0.301790  1.168141
+two    0.184956  1.075827  0.269703
+three  0.347362  0.811374  0.053796
+four   0.046029  0.031835  0.160494
+>>>
+>>> f = lambda x: x.max() - x.min()
+>>> df.apply(f) # 每列执行一次上述运算
+first     0.704466
+second    1.887201
+thrid     1.114346
+dtype: float64
+>>> df.apply(f, axis = 'columns') # 对每行进行应用
+one      1.469931
+two      1.260783
+three    1.158735
+four     0.192329
+dtype: float64
+>>>
+>>> f = lambda x: '##%.2f' %x 
+>>> df.applymap(f) # 每个浮点数进行函数应用
+         first   second    thrid
+one    ##-0.52   ##0.30  ##-1.17
+two     ##0.18  ##-1.08  ##-0.27
+three  ##-0.35   ##0.81  ##-0.05
+four   ##-0.05   ##0.03  ##-0.16
+>>> df['thrid'].map(f) # Series 对应的计算
+one      ##-1.17
+two      ##-0.27
+three    ##-0.05
+four     ##-0.16
+Name: thrid, dtype: object
+```
+
 * 排序和排名
+
+```python
+>>> import pandas as pd
+>>> import numpy as np
+>>>
+>>> s = pd.Series([4, np.nan, 7, np.nan, -3, 2], index=['d', 'a', 'b', 'c', 'e', 'f'])
+>>> s
+d    4.0
+a    NaN
+b    7.0
+c    NaN
+e   -3.0
+f    2.0
+dtype: float64
+>>> s.sort_index() # 索引排序
+a    NaN
+b    7.0
+c    NaN
+d    4.0
+e   -3.0
+f    2.0
+dtype: float64
+>>> s.sort_values() # 值排序，NaN 置后
+e   -3.0
+f    2.0
+d    4.0
+b    7.0
+a    NaN
+c    NaN
+dtype: float64
+>>>
+>>> df = pd.DataFrame(np.arange(12.).reshape((4, 3)), columns = ['first', 'second', 'thrid'], index = ['four', 'three', 'two', 'one'])
+>>> df
+       first  second  thrid
+four     0.0     1.0    2.0
+three    3.0     4.0    5.0
+two      6.0     7.0    8.0
+one      9.0    10.0   11.0
+>>> df.sort_index() # 索引排序
+       first  second  thrid
+four     0.0     1.0    2.0
+one      9.0    10.0   11.0
+three    3.0     4.0    5.0
+two      6.0     7.0    8.0
+>>> df.sort_index(axis = 1) # 列排序
+       first  second  thrid
+four     0.0     1.0    2.0
+three    3.0     4.0    5.0
+two      6.0     7.0    8.0
+one      9.0    10.0   11.0
+>>> df.sort_index(axis = 1, ascending = False) # 降序排序
+       thrid  second  first
+four     2.0     1.0    0.0
+three    5.0     4.0    3.0
+two      8.0     7.0    6.0
+one     11.0    10.0    9.0
+>>> df.sort_values(by = 'first') # 根据指定列排序
+       first  second  thrid
+four     0.0     1.0    2.0
+three    3.0     4.0    5.0
+two      6.0     7.0    8.0
+one      9.0    10.0   11.0
+>>> df.sort_values(by = ['first', 'second'])
+       first  second  thrid
+four     0.0     1.0    2.0
+three    3.0     4.0    5.0
+two      6.0     7.0    8.0
+one      9.0    10.0   11.0
+>>>
+>>> s = pd.Series([7, -5, 7, 4, 2, 0, 4]) # 为对应元素分组后，分配一个平均排名
+>>> s.rank()
+0    6.5
+1    1.0
+2    6.5
+3    4.5
+4    3.0
+5    2.0
+6    4.5
+dtype: float64
+>>> s.rank(method = 'first') # 原始顺序做排名
+0    6.0
+1    1.0
+2    7.0
+3    4.0
+4    3.0
+5    2.0
+6    5.0
+dtype: float64
+>>> s.rank(ascending = False, method = 'max') # 最大排名
+0    2.0
+1    7.0
+2    2.0
+3    4.0
+4    5.0
+5    6.0
+6    4.0
+dtype: float64
+>>> s.rank(ascending = False, method = 'min') # 最小排名
+0    1.0
+1    7.0
+2    1.0
+3    3.0
+4    5.0
+5    6.0
+6    3.0
+dtype: float64
+>>> s.rank(ascending = False, method = 'average') # 同组进行平均排名
+0    1.5
+1    7.0
+2    1.5
+3    3.5
+4    5.0
+5    6.0
+6    3.5
+dtype: float64
+>>> s.rank(ascending = False, method = 'dense') # 排名在组件增加 1
+0    1.0
+1    5.0
+2    1.0
+3    2.0
+4    3.0
+5    4.0
+6    2.0
+dtype: float64
+>>>
+>>> df = pd.DataFrame(np.arange(12.).reshape((4, 3)), columns = ['first', 'second', 'thrid'], index = ['four', 'three', 'two', 'one'])
+>>> df.rank(axis='columns')
+       first  second  thrid
+four     1.0     2.0    3.0
+three    1.0     2.0    3.0
+two      1.0     2.0    3.0
+one      1.0     2.0    3.0
+```
 
 ### 7.4.3 汇总和计算描述统计
 
+* 常见统计方法
+
+```python
+>>> import pandas as pd
+>>> import numpy as np
+>>>
+>>> df = pd.DataFrame([[1.4, np.nan], [7.1, -4.5], [np.nan, np.nan], [0.75, -1.3]], index=['a', 'b', 'c', 'd'], columns=['one', 'two'])
+>>> df
+    one  two
+a  1.40  NaN
+b  7.10 -4.5
+c   NaN  NaN
+d  0.75 -1.3
+>>>
+>>> df.count() # 非 NaN 数量
+one    3
+two    2
+dtype: int64
+>>> df.describe() # 汇总统计
+            one       two
+count  3.000000  2.000000
+mean   3.083333 -2.900000
+std    3.493685  2.262742
+min    0.750000 -4.500000
+25%    1.075000 -3.700000
+50%    1.400000 -2.900000
+75%    4.250000 -2.100000
+max    7.100000 -1.300000
+>>> df.min() # 最小值
+one    0.75
+two   -4.50
+dtype: float64
+>>> df.min(axis =1) # 列的最小值计算
+a    1.4
+b   -4.5
+c    NaN
+d   -1.3
+dtype: float64
+>>> df.min(skipna = False) # 不排除缺失值进行计算，默认是排除缺失值后进行计算的
+one   NaN
+two   NaN
+dtype: float64
+>>> df.max() # 最大值
+one    7.1
+two   -1.3
+dtype: float64
+>>> df['one'].argmin() # 最小值索引位置
+'d'
+>>> df['one'].argmax() # 最大值索引位置
+'b'
+>>> df.idxmin() # 最小值索引位置
+one    d
+two    b
+dtype: object
+>>> df.idxmax() # 最大值索引位置
+one    b
+two    d
+dtype: object
+>>> df.quantile() # 分位数
+one    1.4
+two   -2.9
+Name: 0.5, dtype: float64
+>>> df.sum() # 总和，自动排除缺失值
+one    9.25
+two   -5.80
+dtype: float64
+>>> df.mean() # 平均数
+one    3.083333
+two   -2.900000
+dtype: float64
+>>> df.mad() # 根据平均值计算平均绝对离差
+one    2.677778
+two    1.600000
+dtype: float64
+>>> df.var() # 方差
+one    12.205833
+two     5.120000
+dtype: float64
+>>> df.std() # 标准差
+one    3.493685
+two    2.262742
+dtype: float64
+>>> df.skew() # 偏度
+one    1.664846
+two         NaN
+dtype: float64
+>>> df.kurt() # 峰度
+one   NaN
+two   NaN
+dtype: float64
+>>> df.cumsum() # 累计和
+    one  two
+a  1.40  NaN
+b  8.50 -4.5
+c   NaN  NaN
+d  9.25 -5.8
+>>> df.cummin() # 累计最小值
+    one  two
+a  1.40  NaN
+b  1.40 -4.5
+c   NaN  NaN
+d  0.75 -4.5
+>>> df.cummax() # 累计最大值
+   one  two
+a  1.4  NaN
+b  7.1 -4.5
+c  NaN  NaN
+d  7.1 -1.3
+>>> df.cumprod() # 累计积
+     one   two
+a  1.400   NaN
+b  9.940 -4.50
+c    NaN   NaN
+d  7.455  5.85
+>>> df.diff() # 一阶差分
+   one  two
+a  NaN  NaN
+b  5.7  NaN
+c  NaN  NaN
+d  NaN  NaN
+>>> df.pct_change() # 百分数变化
+        one       two
+a       NaN       NaN
+b  4.071429       NaN
+c  0.000000  0.000000
+d -0.894366 -0.711111
+```
+
 * 相关系数与协方差
 
+```python
+>>> s1 = pd.Series(np.random.randn(4), index = ['four', 'three', 'two', 'one'])
+>>> s2 = pd.Series(np.random.randn(4), index = ['four', 'three', 'two', 'one'])
+>>> s1
+four    -1.570356
+three    1.330038
+two     -0.015304
+one     -1.049489
+dtype: float64
+>>> s2
+four     0.953147
+three   -0.259151
+two      0.026956
+one     -0.211236
+dtype: float64
+>>> s1.corr(s2) # 计算 s1 和 s2 的相关系数
+-0.6709803173456137
+>>> s1.cov(s2) # 计算 s1 和 s2 的协方差
+-0.48462481328586904
+>>>
+>>> df = pd.DataFrame(np.random.randn(4, 3), columns = ['first', 'second', 'thrid'], index = ['four', 'three', 'two', 'one'])
+>>> df.corr() # DataFrame 的相关系数矩阵
+           first    second     thrid
+first   1.000000 -0.448123  0.690295
+second -0.448123  1.000000 -0.791210
+thrid   0.690295 -0.791210  1.000000
+>>> df.cov() # DataFrame 的协方差矩阵
+           first    second     thrid
+first   1.413201 -0.546178  0.554683
+second -0.546178  1.051160 -0.548321
+thrid   0.554683 -0.548321  0.456896
+>>> df.corrwith(s1) # 针对每列的相关系数
+first    -0.056426
+second   -0.586744
+thrid    -0.020669
+dtype: float64
+```
+
 * 唯一值、值计数以及成员资格
+
+```python
+>>> s = pd.Series(['c', 'a', 'd', 'a', 'a', 'b', 'b', 'c', 'c'])
+>>> s.unique() # 唯一值数组
+array(['c', 'a', 'd', 'b'], dtype=object)
+>>> s.value_counts() # 计数数组，降序排列
+a    3
+c    3
+b    2
+d    1
+dtype: int64
+>>> pd.value_counts(s.values, sort = False)
+b    2
+c    3
+a    3
+d    1
+dtype: int64
+>>> s.isin(['b', 'c']) # 是否包含的该值的数组
+0     True
+1    False
+2    False
+3    False
+4    False
+5     True
+6     True
+7     True
+8     True
+dtype: bool
+>>> s[s.isin(['b', 'c'])]
+0    c
+5    b
+6    b
+7    c
+8    c
+dtype: object
+```
+
+### 7.4.4 `IO`操作
+
+* `csv`
+
+```python
+>>> df = pd.read_csv('examples/ex1.csv') # 读csv文件
+>>> df
+   a   b   c   d message
+0  1   2   3   4   hello
+1  5   6   7   8   world
+2  9  10  11  12     foo
+>>> pd.read_table('examples/ex1.csv', sep = ',') # 指定分隔符为 ,
+   a   b   c   d message
+0  1   2   3   4   hello
+1  5   6   7   8   world
+2  9  10  11  12     foo
+>>> list(open('examples/ex3.txt'))
+['            A         B         C\n',
+ 'aaa -0.264438 -1.026059 -0.619500\n',
+ 'bbb  0.927272  0.302904 -0.032399\n',
+ 'ccc -0.264273 -0.386314 -0.217601\n',
+ 'ddd -0.871858 -0.348382  1.100491\n']
+>>> pd.read_table('examples/ex3.txt', sep='\s+') # 使用正则表达式作为分隔符号
+            A         B         C
+aaa -0.264438 -1.026059 -0.619500
+bbb  0.927272  0.302904 -0.032399
+ccc -0.264273 -0.386314 -0.217601
+ddd -0.871858 -0.348382  1.100491
+>>>
+>>> pd.read_csv('examples/ex2.csv', header = None) # 不读列名
+   0   1   2   3      4
+0  1   2   3   4  hello
+1  5   6   7   8  world
+2  9  10  11  12    foo
+>>> pd.read_csv('examples/ex2.csv', names = ['a', 'b', 'c', 'd', 'message']) # 指定列名
+   a   b   c   d message
+0  1   2   3   4   hello
+1  5   6   7   8   world
+2  9  10  11  12     foo
+>>> pd.read_csv('examples/ex2.csv', names = ['a', 'b', 'c', 'd', 'message'], index_col='message') # 指定索引列
+         a   b   c   d
+message               
+hello    1   2   3   4
+world    5   6   7   8
+foo      9  10  11  12
+>>>
+>>> list(open('csv_mindex.csv'))
+['key1,key2,value1,value2\n',
+ 'one,a,1,2\n',
+ 'one,b,3,4\n',
+ 'one,c,5,6\n',
+ 'one,d,7,8\n',
+ 'two,a,9,10\n',
+ 'two,b,11,12\n',
+ 'two,c,13,14\n',
+ 'two,d,15,16\n']
+>>> parsed = pd.read_csv('examples/csv_mindex.csv', index_col = ['key1', 'key2']) # 指定索引数组，进行层次索引
+>>> parsed
+           value1  value2
+key1 key2                
+one  a          1       2
+     b          3       4
+     c          5       6
+     d          7       8
+two  a          9      10
+     b         11      12
+     c         13      14
+     d         15      16
+>>>
+>>> pd.read_csv('examples/ex4.csv', skiprows=[0, 2, 3]) # 跳过 0， 2， 3 行
+   a   b   c   d message
+0  1   2   3   4   hello
+1  5   6   7   8   world
+2  9  10  11  12     foo
+>>>
+>>> result = pd.read_csv('examples/ex5.csv', na_values=['NULL']) # 指定将读到的 NULL 定义为空值，默认还有 NA 和 空字符串
+>>> result
+  something  a   b     c   d message
+0       one  1   2   3.0   4     NaN
+1       two  5   6   NaN   8   world
+2     three  9  10  11.0  12     foo
+>>> pd.read_csv('examples/ex5.csv', na_values = {'message': ['foo', 'NA'], 'something': ['two']}) # 利用字典将识别到对应列中的值置为空值
+something  a   b     c   d message
+0       one  1   2   3.0   4     NaN
+1       NaN  5   6   NaN   8   world
+2     three  9  10  11.0  12     NaN
+>>>
+>>> pd.options.display.max_rows = 10 # 最大显示行数
+>>> pd.read_csv('examples/ex6.csv')
+           one       two     three      four key
+0     0.467976 -0.038649 -0.295344 -1.824726   L
+1    -0.358893  1.404453  0.704965 -0.200638   B
+2    -0.501840  0.659254 -0.421691 -0.057688   G
+3     0.204886  1.074134  1.388361 -0.982404   R
+4     0.354628 -0.133116  0.283763 -0.837063   Q
+...        ...       ...       ...       ...  ..
+9995  2.311896 -0.417070 -1.409599 -0.515821   L
+9996 -0.479893 -0.650419  0.745152 -0.646038   E
+9997  0.523331  0.787112  0.486066  1.093156   K
+9998 -0.362559  0.598894 -1.843201  0.887292   G
+9999 -0.096376 -1.012999 -0.657431 -0.573315   0
+[10000 rows x 5 columns]
+If you want to only read a small
+>>> pd.read_csv('examples/ex6.csv', nrows = 5) # 只显示 5 行
+        one       two     three      four key
+0  0.467976 -0.038649 -0.295344 -1.824726   L
+1 -0.358893  1.404453  0.704965 -0.200638   B
+2 -0.501840  0.659254 -0.421691 -0.057688   G
+3  0.204886  1.074134  1.388361 -0.982404   R
+4  0.354628 -0.133116  0.283763 -0.837063   Q
+>>>
+>>> chunker = pd.read_csv('examples/ex6.csv', chunksize = 1000) # 分块读取
+>>> chunker
+<pandas.io.parsers.TextParser at 0x8398150>
+>>> tot = pd.Series([])
+>>> for piece in chunker:
+        tot = tot.add(piece['key'].value_counts(), fill_value=0)
+>>> tot = tot.sort_values(ascending=False)
+>>> tot[:10]
+E    368.0
+X    364.0
+L    346.0
+O    343.0
+Q    340.0
+M    338.0
+J    337.0
+F    335.0
+K    334.0
+H    330.0
+dtype: float64
+>>>
+>>> data.to_csv('examples/out.csv') # 保存成 csv
+>>> 
+>>> import sys
+>>> data.to_csv(sys.stdout, sep='|') # 指定保存的分隔符
+>>> 
+>>> data.to_csv(sys.stdout, na_rep='NULL')
+,something,a,b,c,d,message
+0,one,1,2,3.0,4,NULL
+1,two,5,6,NULL,8,world
+2,three,9,10,11.0,12,foo
+>>>
+>>> data.to_csv(sys.stdout, index = False, header = False) # 不保存列名和索引
+one,1,2,3.0,4,
+two,5,6,,8,world
+three,9,10,11.0,12,foo
+>>>
+>>> data.to_csv(sys.stdout, index = False, columns = ['a', 'b', 'c']) # 保存指定列名
+a,b,c
+1,2,3.0
+5,6,
+9,10,11.0
+>>>
+>>> s = pd.Series(np.arange(7)) # 序列进行保存
+>>> s.to_csv('examples/series.csv')
+```
+
+* `JSON`
+
+```python
+>>> import json
+>>> result = json.loads(obj)
+>>> result
+{'name': 'Wes', 'pet': None, 'places_lived': ['United States', 'Spain', 'Germany'], 'siblings': [{'age': 30, 'name': 'Scott', 'pets': ['Zeus', 'Zuko']}, {'age': 38, 'name': 'Katie', 'pets': ['Sixes', 'Stache', 'Cisco']}]}
+>>> siblings = pd.DataFrame(result['siblings'], columns=['name', 'age'])
+>>> siblings
+    name  age
+0  Scott   30
+1  Katie   38
+>>>
+>>> pd.read_json('examples/example.json')
+   a  b  c
+0  1  2  3
+1  4  5  6
+2  7  8  9
+>>> print(data.to_json())
+{"a":{"0":1,"1":4,"2":7},"b":{"0":2,"1":5,"2":8},"c":{"0":3,"1":6,"2":9}}
+>>> print(data.to_json(orient='records'))
+[{"a":1,"b":2,"c":3},{"a":4,"b":5,"c":6},{"a":7,"b":8,"c":9}]
+```
+
+* `pickle`
+
+```python
+>>> df = pd.read_csv('examples/ex1.csv')
+>>> df
+   a   b   c   d message
+0  1   2   3   4   hello
+1  5   6   7   8   world
+2  9  10  11  12     foo
+>>> df.to_pickle('examples/frame_pickle')
+>>> pd.read_pickle('examples/frame_pickle')
+   a   b   c   d message
+0  1   2   3   4   hello
+1  5   6   7   8   world
+2  9  10  11  12     foo
+```
+
+* `excel`
+
+```python
+>>> xlsx = pd.ExcelFile('examples/ex1.xlsx')
+>>> pd.read_excel(xlsx, 'Sheet1')
+   a   b   c   d message
+0  1   2   3   4   hello
+1  5   6   7   8   world
+2  9  10  11  12     foo
+>>> df = pd.read_excel('examples/ex1.xlsx', 'Sheet1')
+>>> df
+   a   b   c   d message
+0  1   2   3   4   hello
+1  5   6   7   8   world
+2  9  10  11  12     foo
+>>> writer = pd.ExcelWriter('examples/ex2.xlsx')
+>>> df.to_excel(writer, 'Sheet1')
+>>> writer.save()
+>>>
+>>> df.to_excel('examples/ex2.xlsx')
+```
+
+### 7.4.5 数据准备
+
+* 清洗
+
+* 准备
+
+* 规整
+
+### 7.4.6 聚合和分组
+
+### 7.4.7 时间序列
+
+### 7.4.8 高级
