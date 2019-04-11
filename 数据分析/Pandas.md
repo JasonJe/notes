@@ -1429,11 +1429,571 @@ a,b,c
 
 ### 7.4.5 数据准备
 
-* 清洗
+* 缺失数据处理
 
-* 准备
+```python
+>>> import pandas as pd
+>>> import numpy as np
+>>>
+>>> s = pd.Series(['aardvark', 'artichoke', np.nan, 'avocado'])
+>>> s
+0     aardvark
+1    artichoke
+2          NaN
+3      avocado
+dtype: object
+>>> s.isnull() # 判断是否为空，返回一个布尔型数组
+0    False
+1    False
+2     True
+3    False
+dtype: bool
+>>>
+>>> s[0] = None # None对象可作为NaN使用
+>>> s
+0         None
+1    artichoke
+2          NaN
+3      avocado
+dtype: object
+>>> s.isnull()
+0     True
+1    False
+2     True
+3    False
+dtype: bool
+>>>
+>>> s = pd.Series([1, np.nan, 3.5, np.nan, 7])
+>>> s
+0    1.0
+1    NaN
+2    3.5
+3    NaN
+4    7.0
+dtype: float64
+>>> s.dropna() # 删除NaN
+0    1.0
+2    3.5
+4    7.0
+dtype: float64
+>>> s[s.notnull()] # 同上
+0    1.0
+2    3.5
+4    7.0
+dtype: float64
+>>>
+>>> df = pd.DataFrame([[1., 6.5, 3.], [1., np.nan, np.nan],[np.nan, np.nan, np.nan], [np.nan, 6.5, 3.]])
+>>> df
+     0    1    2
+0  1.0  6.5  3.0
+1  1.0  NaN  NaN
+2  NaN  NaN  NaN
+3  NaN  6.5  3.0
+>>> df.dropna()
+     0    1    2
+0  1.0  6.5  3.0
+>>> df.dropna(how = 'all') # 删除整行为空的
+     0    1    2
+0  1.0  6.5  3.0
+1  1.0  NaN  NaN
+3  NaN  6.5  3.0
+>>> df[4] = np.nan
+>>> df.dropna(axis = 1, how = 'all') # 删除整列为空
+     0    1    2
+0  1.0  6.5  3.0
+1  1.0  NaN  NaN
+2  NaN  NaN  NaN
+3  NaN  6.5  3.0
+>>>
+>>> df = pd.DataFrame(np.random.randn(7, 3))
+>>> df.iloc[:4, 1] = np.nan
+>>> df.iloc[:2, 2] = np.nan
+>>> df
+          0         1         2
+0 -1.835056       NaN       NaN
+1 -0.622418       NaN       NaN
+2 -0.917339       NaN -1.705462
+3  1.877966       NaN -0.969041
+4 -0.306760  1.169494 -1.275661
+5 -0.566569  0.828514  0.425309
+6 -1.006299 -2.028990  0.216853
+>>> df.dropna()
+          0         1         2
+4 -0.306760  1.169494 -1.275661
+5 -0.566569  0.828514  0.425309
+6 -1.006299 -2.028990  0.216853
+>>> df.dropna(thresh = 2) # 保留至少有 2 个非 NaN 的行
+          0         1         2
+2 -0.917339       NaN -1.705462
+3  1.877966       NaN -0.969041
+4 -0.306760  1.169494 -1.275661
+5 -0.566569  0.828514  0.425309
+6 -1.006299 -2.028990  0.216853
+>>>
+>>> df.fillna(0) # 填充空值为 0 
+          0         1         2
+0 -1.835056  0.000000  0.000000
+1 -0.622418  0.000000  0.000000
+2 -0.917339  0.000000 -1.705462
+3  1.877966  0.000000 -0.969041
+4 -0.306760  1.169494 -1.275661
+5 -0.566569  0.828514  0.425309
+6 -1.006299 -2.028990  0.216853
+>>> df.fillna({1: 0.5, 2: 0}) # 指定列填充对应值
+          0         1         2
+0 -1.835056  0.500000  0.000000
+1 -0.622418  0.500000  0.000000
+2 -0.917339  0.500000 -1.705462
+3  1.877966  0.500000 -0.969041
+4 -0.306760  1.169494 -1.275661
+5 -0.566569  0.828514  0.425309
+6 -1.006299 -2.028990  0.216853
+>>> df.fillna(0, inplace = True) # 原地修改
+>>> df
+          0         1         2
+0 -1.835056  0.000000  0.000000
+1 -0.622418  0.000000  0.000000
+2 -0.917339  0.000000 -1.705462
+3  1.877966  0.000000 -0.969041
+4 -0.306760  1.169494 -1.275661
+5 -0.566569  0.828514  0.425309
+6 -1.006299 -2.028990  0.216853
+>>>
+>>> df = pd.DataFrame(np.random.randn(6, 3))
+>>> df.iloc[2:, 1] = np.nan
+>>> df.iloc[4:, 2] = np.nan
+>>> df
+          0         1         2
+0 -1.497591  0.565268  0.000782
+1 -0.651188 -1.774130  0.187381
+2  0.148992       NaN -0.045827
+3 -0.349998       NaN  0.184382
+4  2.078643       NaN       NaN
+5 -0.980509       NaN       NaN
+>>> df.fillna(method='ffill') # 前向补充
+          0         1         2
+0 -1.497591  0.565268  0.000782
+1 -0.651188 -1.774130  0.187381
+2  0.148992 -1.774130 -0.045827
+3 -0.349998 -1.774130  0.184382
+4  2.078643 -1.774130  0.184382
+5 -0.980509 -1.774130  0.184382
+>>> df.fillna(method='ffill', limit=2) # 至少补充 2 行
+          0         1         2
+0 -1.497591  0.565268  0.000782
+1 -0.651188 -1.774130  0.187381
+2  0.148992 -1.774130 -0.045827
+3 -0.349998 -1.774130  0.184382
+4  2.078643       NaN  0.184382
+5 -0.980509       NaN  0.184382
+>>>
+>>> s = pd.Series([1., np.nan, 3.5, np.nan, 7])
+>>> s.fillna(s.mean()) # 补充对应的均值
+0    1.000000
+1    3.833333
+2    3.500000
+3    3.833333
+4    7.000000
+dtype: float64
+>>>
+```
 
-* 规整
+* 数据转换
+
+```python
+>>> # 重复值处理
+>>> df = pd.DataFrame({'k1': ['one', 'two'] * 3 + ['two'], 'k2': [1, 1, 2, 3, 3, 4, 4]})
+>>> df
+    k1  k2
+0  one   1
+1  two   1
+2  one   2
+3  two   3
+4  one   3
+5  two   4
+6  two   4
+>>> df.duplicated() # 返回是否重复的布尔型数组
+0    False
+1    False
+2    False
+3    False
+4    False
+5    False
+6     True
+dtype: bool
+>>> df.drop_duplicates() # 删除重复行
+    k1  k2
+0  one   1
+1  two   1
+2  one   2
+3  two   3
+4  one   3
+5  two   4
+>>>
+>>> df['v1'] = range(7)
+>>> df.drop_duplicates(['k1']) # 指定列删除重复行
+    k1  k2  v1
+0  one   1   0
+1  two   1   1
+>>> df.drop_duplicates(['k1', 'k2'], keep = 'last') # 保留重复行中最后一行
+    k1  k2  v1
+0  one   1   0
+1  two   1   1
+2  one   2   2
+3  two   3   3
+4  one   3   4
+6  two   4   6
+>>>
+>>> # 数据转换
+>>> df = pd.DataFrame({'food': ['bacon', 'pulled pork', 'bacon', 'Pastrami', 'corned beef', 'Bacon', 'pastrami', 'honey ham', 'nova lox'], 'ounces': [4, 3, 12, 6, 7.5, 8, 3, 5, 6]})
+>>> df
+          food  ounces
+0        bacon     4.0
+1  pulled pork     3.0
+2        bacon    12.0
+3     Pastrami     6.0
+4  corned beef     7.5
+5        Bacon     8.0
+6     pastrami     3.0
+7    honey ham     5.0
+8     nova lox     6.0
+>>>
+>>> df1 = df['food'].str.lower() # Series的str.lower方法转换为小写
+>>> df1
+0          bacon
+1    pulled pork
+2          bacon
+3       pastrami
+4    corned beef
+5          bacon
+6       pastrami
+7      honey ham
+8       nova lox
+Name: food, dtype: object
+>>> meat_to_animal = {'bacon': 'pig', 'pulled pork': 'pig', 'pastrami': 'cow', 'corned beef': 'cow', 'honey ham': 'pig', 'nova lox': 'salmon'}
+>>> df['animal'] = df1.map(meat_to_animal) # 增加一列，对应元素转换为对应值
+>>> df
+          food  ounces  animal
+0        bacon     4.0     pig
+1  pulled pork     3.0     pig
+2        bacon    12.0     pig
+3     Pastrami     6.0     cow
+4  corned beef     7.5     cow
+5        Bacon     8.0     pig
+6     pastrami     3.0     cow
+7    honey ham     5.0     pig
+8     nova lox     6.0  salmon
+>>>
+>>> df['food'].map(lambda x: meat_to_animal[x.lower()]) # 同上并能进行 Series的str.lower
+0       pig
+1       pig
+2       pig
+3       cow
+4       cow
+5       pig
+6       cow
+7       pig
+8    salmon
+Name: food, dtype: object
+>>>
+>>> # 替换值
+>>> s = pd.Series([1., -999., 2., -999., -1000., 3.])
+>>> s
+0       1.0
+1    -999.0
+2       2.0
+3    -999.0
+4   -1000.0
+5       3.0
+dtype: float64
+>>> s.replace(-999, np.nan)
+0       1.0
+1       NaN
+2       2.0
+3       NaN
+4   -1000.0
+5       3.0
+dtype: float64
+>>> s.replace([-999, -1000], np.nan)
+0    1.0
+1    NaN
+2    2.0
+3    NaN
+4    NaN
+5    3.0
+dtype: float64
+>>> s.replace([-999, -1000], [np.nan, 0])
+0    1.0
+1    NaN
+2    2.0
+3    NaN
+4    0.0
+5    3.0
+dtype: float64
+>>> s.replace({-999: np.nan, -1000: 0}) # 同上
+0    1.0
+1    NaN
+2    2.0
+3    NaN
+4    0.0
+5    3.0
+dtype: float64
+>>>
+>>> # 索引处理
+>>> df = pd.DataFrame(np.arange(12).reshape((3, 4)), index=['Ohio', 'Colorado', 'New York'], columns=['one', 'two', 'three', 'four'])
+>>> df
+          one  two  three  four
+Ohio        0    1      2     3
+Colorado    4    5      6     7
+New York    8    9     10    11
+>>> df.index.map(lambda x: x[:4].upper()) # 大写
+Index(['OHIO', 'COLO', 'NEW '], dtype='object')
+>>> df.index = df.index.map(lambda x: x[:4].upper())
+>>> df.rename(index = str.title, columns = str.upper) # 同上，指定方法进行转换并重命名
+      ONE  TWO  THREE  FOUR
+Ohio    0    1      2     3
+Colo    4    5      6     7
+New     8    9     10    11
+>>>
+>>> df.rename(index={'OHIO': 'INDIANA'}, columns = {'three': 'peekaboo'}) # 对应元素进行处理
+             one  two  peekaboo  four
+INDIANA        0    1         2     3
+COLO           4    5         6     7
+NEW            8    9        10    11
+>>> df
+      one  two  three  four
+OHIO    0    1      2     3
+COLO    4    5      6     7
+NEW     8    9     10    11
+>>> df.rename(index={'OHIO': 'INDIANA'}, inplace = True)
+>>> df
+             one  two  three  four
+INDIANA        0    1      2     3
+COLO           4    5      6     7
+NEW            8    9     10    11
+>>>
+>>> # 离散化和面元划分
+>>> ages = [20, 22, 25, 27, 21, 23, 37, 31, 61, 45, 41, 32]
+>>> bins = [18, 25, 35, 60, 100]
+>>> cats = pd.cut(ages, bins)
+>>> cats # 按照 bins 分成 4 组
+[(18, 25], (18, 25], (18, 25], (25, 35], (18, 25], ..., (25, 35], (60, 100], (35, 60], (35, 60], (25, 35]]
+Length: 12
+Categories (4, interval[int64]): [(18, 25] < (25, 35] < (35, 60] < (60, 100]]
+>>> cats.codes # ages 每个元素所属的组索引
+array([0, 0, 0, 1, 0, 0, 2, 1, 3, 2, 2, 1], dtype=int8)
+>>> cats.categories # 左开右闭的分组数组
+IntervalIndex([(18, 25], (25, 35], (35, 60], (60, 100]]
+              closed='right',
+              dtype='interval[int64]')
+>>> pd.value_counts(cats) # 计数
+(18, 25]     5
+(35, 60]     3
+(25, 35]     3
+(60, 100]    1
+dtype: int64
+>>>
+>>> pd.cut(ages, [18, 26, 36, 61, 100], right = False) # 左开右开
+[[18, 26), [18, 26), [18, 26), [26, 36), [18, 26), ..., [26, 36), [61, 100), [36, 61), [36, 61), [26, 36)]
+Length: 12
+Categories (4, interval[int64]): [[18, 26) < [26, 36) < [36, 61) < [61, 100)]
+>>>
+>>> group_names = ['Youth', 'YoungAdult', 'MiddleAged', 'Senior'] # 每组取名
+>>> pd.cut(ages, bins, labels = group_names)
+[Youth, Youth, Youth, YoungAdult, Youth, ..., YoungAdult, Senior, MiddleAged, MiddleAged, YoungAdult]
+Length: 12
+Categories (4, object): [Youth < YoungAdult < MiddleAged < Senior]
+>>>
+>>> pd.cut(np.random.rand(20), 4, precision = 2) # 指定分成四组，保留 2 位小数
+[(0.2, 0.37], (0.37, 0.53], (0.04, 0.2], (0.2, 0.37], (0.53, 0.69], ..., (0.2, 0.37], (0.37, 0.53], (0.2, 0.37], (0.53, 0.69], (0.37, 0.53]]
+Length: 20
+Categories (4, interval[float64]): [(0.04, 0.2] < (0.2, 0.37] < (0.37, 0.53] < (0.53, 0.69]]
+>>>
+>>> cats = pd.qcut(np.random.randn(1000), 4) # 按照样本分位数进行分组
+>>> cats
+[(-3.85, -0.635], (0.611, 4.052], (-3.85, -0.635], (0.611, 4.052], (-0.0446, 0.611], ..., (-3.85, -0.635], (-0.0446, 0.611], (0.611, 4.052], (-3.85, -0.635], (-0.0446, 0.611]]
+Length: 1000
+Categories (4, interval[float64]): [(-3.85, -0.635] < (-0.635, -0.0446] < (-0.0446, 0.611] <
+                                    (0.611, 4.052]]
+>>> pd.value_counts(cats)
+(0.611, 4.052]       250
+(-0.0446, 0.611]     250
+(-0.635, -0.0446]    250
+(-3.85, -0.635]      250
+dtype: int64
+>>> pd.qcut(np.random.randn(1000), [0, 0.1, 0.5, 0.9, 1.]) # 自定义分位数数组
+[(0.0387, 1.246], (-1.285, 0.0387], (-1.285, 0.0387], (1.246, 2.837], (-1.285, 0.0387], ..., (0.0387, 1.246], (-2.897, -1.285], (0.0387, 1.246], (-1.285, 0.0387], (-1.285, 0.0387]]
+Length: 1000
+Categories (4, interval[float64]): [(-2.897, -1.285] < (-1.285, 0.0387] < (0.0387, 1.246] <
+                                    (1.246, 2.837]]
+>>>
+>>> # 检测和过滤异常值
+>>> df = pd.DataFrame(np.random.randn(1000, 4))
+>>> df.describe()
+                 0            1            2            3
+count  1000.000000  1000.000000  1000.000000  1000.000000
+mean     -0.003095    -0.044058     0.045726     0.027742
+std       0.977519     0.990128     0.973064     1.018610
+min      -3.724572    -3.290415    -3.233415    -3.046136
+25%      -0.607939    -0.668722    -0.586161    -0.666566
+50%       0.000194    -0.072557     0.027244     0.063540
+75%       0.632587     0.665414     0.656196     0.669008
+max       3.611280     3.606621     3.765902     3.058573
+>>> df[(np.abs(df) > 3).any(1)] # ndarry 的 any() 方法，返回 True
+            0         1         2         3
+93   3.408187 -0.103922 -1.110054  0.567005
+103  3.611280  0.406028  0.274605  0.487306
+113 -2.102704  2.007313  3.031139 -0.149642
+144  0.332747 -0.538448  3.103812 -0.881626
+254 -3.436895  0.302619 -1.501830 -0.182301
+281 -3.185617  1.103247 -0.803208  1.976911
+529  0.273695 -3.290415  0.332741 -0.106494
+546 -0.825269  0.531172  1.224454 -3.046136
+703  0.983526  0.787115  3.765902 -0.371106
+771 -3.724572  0.793264 -0.950179  0.108810
+800 -0.916751 -3.104559  0.341853 -0.410846
+808  0.972227 -0.453404 -3.233415  0.458490
+811  2.051842  3.606621 -0.042653  1.019130
+860  0.236864  3.156231 -0.249022  0.935836
+900 -0.460253  1.233382 -0.232106  3.058573
+902  2.247374 -1.592100 -3.018866 -0.513080
+975  1.291065 -0.188662 -3.090970  0.707329
+>>> np.sign(df).head() # 根据正负赋值 -1 1
+     0    1    2    3
+0  1.0  1.0 -1.0 -1.0
+1 -1.0 -1.0  1.0 -1.0
+2  1.0  1.0  1.0  1.0
+3  1.0  1.0  1.0  1.0
+4 -1.0 -1.0  1.0  1.0
+>>> df[np.abs(df) > 3] = np.sign(df) * 3
+>>>
+>>> # 随机抽样
+>>> df = pd.DataFrame(np.arange(5 * 4).reshape((5, 4)))
+>>> sampler = np.random.permutation(5)
+>>> sampler
+array([4, 2, 0, 1, 3])
+>>> df.take(sampler) # 不放回抽样
+    0   1   2   3
+4  16  17  18  19
+2   8   9  10  11
+0   0   1   2   3
+1   4   5   6   7
+3  12  13  14  15
+>>> df.sample(n = 3)
+    0   1   2   3
+4  16  17  18  19
+3  12  13  14  15
+1   4   5   6   7
+>>> df.sample(n = 3, replace = True) # 放回抽样
+    0   1   2   3
+4  16  17  18  19
+4  16  17  18  19
+1   4   5   6   7
+>>> choices = pd.Series([5, 7, -1, 6, 4])
+>>> choices.sample(n = 10, replace = True)
+0    5
+1    7
+2   -1
+4    4
+4    4
+4    4
+2   -1
+3    6
+0    5
+4    4
+dtype: int64
+>>>
+>>> # 独热编码
+>>> df = pd.DataFrame({'key': ['b', 'b', 'a', 'c', 'a', 'b'], 'data': range(6)})
+>>> pd.get_dummies(df['key'])
+   a  b  c
+0  0  1  0
+1  0  1  0
+2  1  0  0
+3  0  0  1
+4  1  0  0
+5  0  1  0
+>>> dummies = pd.get_dummies(df['key'], prefix='key') # 指定列名前缀
+>>> dummies
+   key_a  key_b  key_c
+0      0      1      0
+1      0      1      0
+2      1      0      0
+3      0      0      1
+4      1      0      0
+5      0      1      0
+>>> df1 = df[['data']].join(dummies) # 拼接列
+>>> df1
+   data  key_a  key_b  key_c
+0     0      0      1      0
+1     1      0      1      0
+2     2      1      0      0
+3     3      0      0      1
+4     4      1      0      0
+5     5      0      1      0
+```
+
+* 字符串处理
+
+```python
+>>> import re
+>>>
+>>> s = pd.Series({'Dave': 'dave@google.com', 'Steve': 'steve@gmail.com', 'Rob': 'rob@gmail.com', 'Wes': np.nan})
+>>> s
+Dave     dave@google.com
+Steve    steve@gmail.com
+Rob        rob@gmail.com
+Wes                  NaN
+dtype: object
+>>> s.isnull()
+Dave     False
+Steve    False
+Rob      False
+Wes       True
+dtype: bool
+>>> s.str.contains('gmail') # Series.str 对象方法
+Dave     False
+Steve     True
+Rob       True
+Wes        NaN
+dtype: object
+>>> pattern =  '([A-Z0-9._%+-]+)@([A-Z0-9.-]+)\\.([A-Z]{2,4})'
+>>> s.str.findall(pattern, flags = re.IGNORECASE) # 正则匹配查找
+Dave     [(dave, google, com)]
+Steve    [(steve, gmail, com)]
+Rob        [(rob, gmail, com)]
+Wes                        NaN
+dtype: object
+>>> matches = s.str.match(pattern, flags = re.IGNORECASE)
+>>> matches
+Dave     True
+Steve    True
+Rob      True
+Wes       NaN
+dtype: object
+>>>
+>>> matches.str.get(1) # 索引指定位置
+Dave    NaN
+Steve   NaN
+Rob     NaN
+Wes     NaN
+dtype: float64
+>>> matches.str[0] # 索引指定位置
+Dave    NaN
+Steve   NaN
+Rob     NaN
+Wes     NaN
+dtype: float64
+>>>
+>>> s.str[:5] # 切片
+Dave     dave@
+Steve    steve
+Rob      rob@g
+Wes        NaN
+dtype: object
+```
+
+`Pandas`字符串方法更多可查看官方文档。
 
 ### 7.4.6 聚合和分组
 
