@@ -1997,6 +1997,712 @@ dtype: object
 
 ### 7.4.6 聚合和分组
 
+```python
+>>> import pandas as pd
+>>> import numpy as np
+>>>
+>>> # 层次化索引
+>>> s = pd.Series(np.random.randn(9), index=[['a', 'a', 'a', 'b', 'b', 'c', 'c', 'd', 'd'], [1, 2, 3, 1, 3, 1, 2, 2, 3]])
+>>> s # 多层索引
+a  1   -0.479523
+   2   -1.895419
+   3    0.634754
+b  1    0.761861
+   3   -0.256956
+c  1    0.255096
+   2    0.393600
+d  2    0.838809
+   3   -0.474474
+dtype: float64
+>>> s.index
+MultiIndex(levels=[['a', 'b', 'c', 'd'], [1, 2, 3]],
+           labels=[[0, 0, 0, 1, 1, 2, 2, 3, 3], [0, 1, 2, 0, 2, 0, 1, 1, 2]])
+>>> s['b'] # 取一级索引的值
+1    0.761861
+3   -0.256956
+dtype: float64
+>>> s['b':'c']
+b  1    0.761861
+   3   -0.256956
+c  1    0.255096
+   2    0.393600
+dtype: float64
+>>> s.loc[:, 2] # 取第二级索引的值
+a   -1.895419
+c    0.393600
+d    0.838809
+dtype: float64
+>>>
+>>> s.unstack() # 生成透视表
+          1         2         3
+a -0.479523 -1.895419  0.634754
+b  0.761861       NaN -0.256956
+c  0.255096  0.393600       NaN
+d       NaN  0.838809 -0.474474
+>>> s.unstack().stack() # 逆运算
+a  1   -0.479523
+   2   -1.895419
+   3    0.634754
+b  1    0.761861
+   3   -0.256956
+c  1    0.255096
+   2    0.393600
+d  2    0.838809
+   3   -0.474474
+dtype: float64
+>>>
+>>> df = pd.DataFrame(np.arange(12).reshape((4, 3)), index=[['a', 'a', 'b', 'b'], [1, 2, 1, 2]], columns=[['Ohio', 'Ohio', 'Colorado'], ['Green', 'Red', 'Green']])
+>>> df
+     Ohio     Colorado
+    Green Red    Green
+a 1     0   1        2
+  2     3   4        5
+b 1     6   7        8
+  2     9  10       11
+>>> df.index.names = ['key1', 'key2'] # 指定索引名称
+>>> df.columns.names = ['state', 'color'] # 指定列名称
+>>>
+>>> df['Ohio'] # 一级列组的数据
+color      Green  Red
+key1 key2
+a    1         0    1
+     2         3    4
+b    1         6    7
+     2         9   10
+>>> 
+>>> # 重排和分级索引
+>>> df.swaplevel('key1', 'key2') # 调整索引顺序
+state      Ohio     Colorado
+color     Green Red    Green
+key2 key1
+1    a        0   1        2
+2    a        3   4        5
+1    b        6   7        8
+2    b        9  10       11
+>>> df.sort_index(level = 1) # 按照指定级别的索引排序
+state      Ohio     Colorado
+color     Green Red    Green
+key1 key2
+a    1        0   1        2
+b    1        6   7        8
+a    2        3   4        5
+b    2        9  10       11
+>>> df.swaplevel(0, 1).sort_index(level = 0)
+state      Ohio     Colorado
+color     Green Red    Green
+key2 key1
+1    a        0   1        2
+     b        6   7        8
+2    a        3   4        5
+     b        9  10       11
+>>>
+>>> # 根据级别汇总统计
+>>> df.sum(level = 'key2') # 汇总指定索引的值
+state  Ohio     Colorado
+color Green Red    Green
+key2
+1         6   8       10
+2        12  14       16
+>>> df.sum(level = 'color', axis = 1) # 汇总指定列的值
+color      Green  Red
+key1 key2
+a    1         2    1
+     2         8    4
+b    1        14    7
+     2        20   10
+>>>
+>>> # 使用列进行索引
+>>> df = pd.DataFrame({'a': range(7), 'b': range(7, 0, -1), 'c': ['one', 'one', 'one', 'two', 'two', 'two', 'two'], 'd': [0, 1, 2, 0, 1, 2, 3]})
+>>> df
+   a  b    c  d
+0  0  7  one  0
+1  1  6  one  1
+2  2  5  one  2
+3  3  4  two  0
+4  4  3  two  1
+5  5  2  two  2
+6  6  1  two  3
+>>> df1 = df.set_index(['c', 'd']) # 指定列作为索引
+>>> df1
+       a  b
+c   d
+one 0  0  7
+    1  1  6
+    2  2  5
+two 0  3  4
+    1  4  3
+    2  5  2
+    3  6  1
+>>> df.set_index(['c', 'd'], drop = False) # 不移除列
+       a  b    c  d
+c   d
+one 0  0  7  one  0
+    1  1  6  one  1
+    2  2  5  one  2
+two 0  3  4  two  0
+    1  4  3  two  1
+    2  5  2  two  2
+    3  6  1  two  3
+>>> df1.reset_index() # 恢复原来的索引
+     c  d  a  b
+0  one  0  0  7
+1  one  1  1  6
+2  one  2  2  5
+3  two  0  3  4
+4  two  1  4  3
+5  two  2  5  2
+6  two  3  6  1
+>>>
+>>> # DataFrame合并
+>>> df1 = pd.DataFrame({'key': ['b', 'b', 'a', 'c', 'a', 'a', 'b'], 'data1': range(7)})
+>>> df2 = pd.DataFrame({'key': ['a', 'b', 'd'], 'data2': range(3)})
+>>> df1
+  key  data1
+0   b      0
+1   b      1
+2   a      2
+3   c      3
+4   a      4
+5   a      5
+6   b      6
+>>> df2
+  key  data2
+0   a      0
+1   b      1
+2   d      2
+>>> pd.merge(df1, df2) # 拼接两个DataFrame，仅仅索引相同的参与，并且形成多对一的合并
+  key  data1  data2
+0   b      0      1
+1   b      1      1
+2   b      6      1
+3   a      2      0
+4   a      4      0
+5   a      5      0
+>>> pd.merge(df1, df2, on = 'key') # 指定使用那个列进行连接，默认使用重叠的列
+  key  data1  data2
+0   b      0      1
+1   b      1      1
+2   b      6      1
+3   a      2      0
+4   a      4      0
+5   a      5      0
+>>>
+>>> df3 = pd.DataFrame({'lkey': ['b', 'b', 'a', 'c', 'a', 'a', 'b'], 'data1': range(7)})
+>>> df4 = pd.DataFrame({'rkey': ['a', 'b', 'd'], 'data2': range(3)})
+>>>
+>>> pd.merge(df3, df4, left_on = 'lkey', right_on = 'rkey') # 默认进行内连接，连接相同的索引，内连接组合键的交集
+  lkey  data1 rkey  data2
+0    b      0    b      1
+1    b      1    b      1
+2    b      6    b      1
+3    a      2    a      0
+4    a      4    a      0
+5    a      5    a      0
+>>> pd.merge(df1, df2, how = 'outer') # 使用两个表的所有键，外连接组合键的并集
+  key  data1  data2
+0   b    0.0    1.0
+1   b    1.0    1.0
+2   b    6.0    1.0
+3   a    2.0    0.0
+4   a    4.0    0.0
+5   a    5.0    0.0
+6   c    3.0    NaN
+7   d    NaN    2.0
+>>>
+>>> df1 = pd.DataFrame({'key': ['b', 'b', 'a', 'c', 'a', 'b'], 'data1': range(6)})
+>>> df2 = pd.DataFrame({'key': ['a', 'b', 'a', 'b', 'd'], 'data2': range(5)})
+>>> df1
+  key  data1
+0   b      0
+1   b      1
+2   a      2
+3   c      3
+4   a      4
+5   b      5
+>>> df2
+  key  data2
+0   a      0
+1   b      1
+2   a      2
+3   b      3
+4   d      4
+>>>
+>>> pd.merge(df1, df2, on = 'key', how = 'left') # 基于 key 这一列，使用 left 连接
+   key  data1  data2
+0    b      0    1.0
+1    b      0    3.0
+2    b      1    1.0
+3    b      1    3.0
+4    a      2    0.0
+5    a      2    2.0
+6    c      3    NaN
+7    a      4    0.0
+8    a      4    2.0
+9    b      5    1.0
+10   b      5    3.0
+>>> pd.merge(df1, df2, how = 'inner') # 内连接，昌盛笛卡尔积，df1 有 3 个 b， df2 有 2 个 b 结果有 6 个 b
+  key  data1  data2
+0   b      0      1
+1   b      0      3
+2   b      1      1
+3   b      1      3
+4   b      5      1
+5   b      5      3
+6   a      2      0
+7   a      2      2
+8   a      4      0
+9   a      4      2
+>>>
+>>> left = pd.DataFrame({'key1': ['foo', 'foo', 'bar'], 'key2': ['one', 'two', 'one'],  'lval': [1, 2, 3]})
+>>> right = pd.DataFrame({'key1': ['foo', 'foo', 'bar', 'bar'], 'key2': ['one', 'one', 'one', 'two'], 'rval': [4, 5, 6, 7]})
+>>> pd.merge(left, right, on = ['key1', 'key2'], how = 'outer') # 通过多个列进行合并
+  key1 key2  lval  rval
+0  foo  one   1.0   4.0
+1  foo  one   1.0   5.0
+2  foo  two   2.0   NaN
+3  bar  one   3.0   6.0
+4  bar  two   NaN   7.0
+>>> pd.merge(left, right, on = 'key1') # 多个列重叠时候，只指定一个列，其余列会重命名
+  key1 key2_x  lval key2_y  rval
+0  foo    one     1    one     4
+1  foo    one     1    one     5
+2  foo    two     2    one     4
+3  foo    two     2    one     5
+4  bar    one     3    one     6
+5  bar    one     3    two     7
+>>> pd.merge(left, right, on = 'key1', suffixes = ('_left', '_right')) # 指定重名的后缀
+  key1 key2_left  lval key2_right  rval
+0  foo       one     1        one     4
+1  foo       one     1        one     5
+2  foo       two     2        one     4
+3  foo       two     2        one     5
+4  bar       one     3        one     6
+5  bar       one     3        two     7
+>>>
+>>> # 索引上的合并
+>>> left1 = pd.DataFrame({'key': ['a', 'b', 'a', 'a', 'b', 'c'], 'value': range(6)})
+>>> right1 = pd.DataFrame({'group_val': [3.5, 7]}, index=['a', 'b'])
+>>> left1
+  key  value
+0   a      0
+1   b      1
+2   a      2
+3   a      3
+4   b      4
+5   c      5
+>>> right1
+   group_val
+a        3.5
+b        7.0
+>>> pd.merge(left1, right1, left_on = 'key', right_index = True) # 基于 key 列和 right1的索引进行内连接
+  key  value  group_val
+0   a      0        3.5
+2   a      2        3.5
+3   a      3        3.5
+1   b      1        7.0
+4   b      4        7.0
+>>> pd.merge(left1, right1, left_on = 'key', right_index = True, how = 'outer') # 外连接
+  key  value  group_val
+0   a      0        3.5
+2   a      2        3.5
+3   a      3        3.5
+1   b      1        7.0
+4   b      4        7.0
+5   c      5        NaN
+>>>
+>>> lefth = pd.DataFrame({'key1': ['Ohio', 'Ohio', 'Ohio', 'Nevada', 'Nevada'], 'key2': [2000, 2001, 2002, 2001, 2002], 'data': np.arange(5.)})
+>>> righth = pd.DataFrame(np.arange(12).reshape((6, 2)), index=[['Nevada', 'Nevada', 'Ohio', 'Ohio', 'Ohio', 'Ohio'], [2001, 2000, 2000, 2000, 2001, 2002]], columns=['event1', 'event2'])
+>>> lefth
+     key1  key2  data
+0    Ohio  2000   0.0
+1    Ohio  2001   1.0
+2    Ohio  2002   2.0
+3  Nevada  2001   3.0
+4  Nevada  2002   4.0
+>>> righth
+             event1  event2
+Nevada 2001       0       1
+       2000       2       3
+Ohio   2000       4       5
+       2000       6       7
+       2001       8       9
+       2002      10      11
+>>> pd.merge(lefth, righth, left_on = ['key1', 'key2'], right_index = True )
+     key1  key2  data  event1  event2
+0    Ohio  2000   0.0       4       5
+0    Ohio  2000   0.0       6       7
+1    Ohio  2001   1.0       8       9
+2    Ohio  2002   2.0      10      11
+3  Nevada  2001   3.0       0       1
+>>> pd.merge(lefth, righth, left_on = ['key1', 'key2'], right_index = True, how = 'outer')
+     key1  key2  data  event1  event2
+0    Ohio  2000   0.0     4.0     5.0
+0    Ohio  2000   0.0     6.0     7.0
+1    Ohio  2001   1.0     8.0     9.0
+2    Ohio  2002   2.0    10.0    11.0
+3  Nevada  2001   3.0     0.0     1.0
+4  Nevada  2002   4.0     NaN     NaN
+4  Nevada  2000   NaN     2.0     3.0
+>>>
+>>> left2 = pd.DataFrame([[1., 2.], [3., 4.], [5., 6.]], index=['a', 'c', 'e'], columns=['Ohio', 'Nevada'])
+>>> right2 = pd.DataFrame([[7., 8.], [9., 10.], [11., 12.], [13, 14]], index=['b', 'c', 'd', 'e'], columns=['Missouri', 'Alabama'])
+>>> left2
+   Ohio  Nevada
+a   1.0     2.0
+c   3.0     4.0
+e   5.0     6.0
+>>> right2
+   Missouri  Alabama
+b       7.0      8.0
+c       9.0     10.0
+d      11.0     12.0
+e      13.0     14.0
+>>> pd.merge(left2, right2, how = 'outer', left_index = True, right_index = True) # 基于所有df的索引
+   Ohio  Nevada  Missouri  Alabama
+a   1.0     2.0       NaN      NaN
+b   NaN     NaN       7.0      8.0
+c   3.0     4.0       9.0     10.0
+d   NaN     NaN      11.0     12.0
+e   5.0     6.0      13.0     14.0
+>>> left2.join(right2, how = 'outer') # 效果同上，left2 与 right2的键的并集，默认使用左连接，保留左边表的行索引
+   Ohio  Nevada  Missouri  Alabama
+a   1.0     2.0       NaN      NaN
+b   NaN     NaN       7.0      8.0
+c   3.0     4.0       9.0     10.0
+d   NaN     NaN      11.0     12.0
+e   5.0     6.0      13.0     14.0
+>>> left1.join(right1, on = 'key') # 指定列名
+  key  value  group_val
+0   a      0        3.5
+1   b      1        7.0
+2   a      2        3.5
+3   a      3        3.5
+4   b      4        7.0
+5   c      5        NaN
+>>>
+>>> another = pd.DataFrame([[7., 8.], [9., 10.], [11., 12.], [16., 17.]], index=['a', 'c', 'e', 'f'], columns=['New York', 'Oregon'])
+>>> another
+   New York  Oregon
+a       7.0     8.0
+c       9.0    10.0
+e      11.0    12.0
+f      16.0    17.0
+>>> left2.join([right2, another]) # 连接多个表
+   Ohio  Nevada  Missouri  Alabama  New York  Oregon
+a   1.0     2.0       NaN      NaN       7.0     8.0
+c   3.0     4.0       9.0     10.0       9.0    10.0
+e   5.0     6.0      13.0     14.0      11.0    12.0
+>>> left2.join([right2, another], how = 'outer')
+C:\ProgramData\Miniconda3\lib\site-packages\pandas\core\frame.py:6369: FutureWarning: Sorting because non-concatenation axis is not aligned. A future version
+of pandas will change to not sort by default.
+
+To accept the future behavior, pass 'sort=False'.
+
+To retain the current behavior and silence the warning, pass 'sort=True'.
+
+  verify_integrity=True)
+   Ohio  Nevada  Missouri  Alabama  New York  Oregon
+a   1.0     2.0       NaN      NaN       7.0     8.0
+b   NaN     NaN       7.0      8.0       NaN     NaN
+c   3.0     4.0       9.0     10.0       9.0    10.0
+d   NaN     NaN      11.0     12.0       NaN     NaN
+e   5.0     6.0      13.0     14.0      11.0    12.0
+f   NaN     NaN       NaN      NaN      16.0    17.0
+>>>
+>>> # 轴向连接
+>>> arr = np.arange(12).reshape((3, 4))
+>>> arr
+array([[ 0,  1,  2,  3],
+       [ 4,  5,  6,  7],
+       [ 8,  9, 10, 11]])
+>>> np.concatenate([arr, arr], axis=1)
+array([[ 0,  1,  2,  3,  0,  1,  2,  3],
+       [ 4,  5,  6,  7,  4,  5,  6,  7],
+       [ 8,  9, 10, 11,  8,  9, 10, 11]])
+>>>
+>>> s1 = pd.Series([0, 1], index=['a', 'b'])
+>>> s2 = pd.Series([2, 3, 4], index=['c', 'd', 'e'])
+>>> s3 = pd.Series([5, 6], index=['f', 'g'])
+>>> pd.concat([s1, s2, s3]) # 纵向拼接
+a    0
+b    1
+c    2
+d    3
+e    4
+f    5
+g    6
+dtype: int64
+>>> pd.concat([s1, s2, s3], axis=1) # 横向拼接
+__main__:1: FutureWarning: Sorting because non-concatenation axis is not aligned. A future version
+of pandas will change to not sort by default.
+
+To accept the future behavior, pass 'sort=False'.
+
+To retain the current behavior and silence the warning, pass 'sort=True'.
+
+     0    1    2
+a  0.0  NaN  NaN
+b  1.0  NaN  NaN
+c  NaN  2.0  NaN
+d  NaN  3.0  NaN
+e  NaN  4.0  NaN
+f  NaN  NaN  5.0
+g  NaN  NaN  6.0
+>>>
+>>> s4 = pd.concat([s1, s3])
+>>> s4
+a    0
+b    1
+f    5
+g    6
+dtype: int64
+>>> pd.concat([s1, s4], axis=1)
+     0  1
+a  0.0  0
+b  1.0  1
+f  NaN  5
+g  NaN  6
+>>> pd.concat([s1, s4], axis=1, join='inner')
+   0  1
+a  0  0
+b  1  1
+>>> pd.concat([s1, s4], axis=1, join_axes = [['a', 'c', 'b', 'e']]) # 指定拼接使用的索引
+     0    1
+a  0.0  0.0
+c  NaN  NaN
+b  1.0  1.0
+e  NaN  NaN
+>>>
+>>> result = pd.concat([s1, s1, s3], keys = ['one','two', 'three']) # 使用一个层次化索引
+>>> result
+one    a    0
+       b    1
+two    a    0
+       b    1
+three  f    5
+       g    6
+dtype: int64
+>>> result.unstack()
+         a    b    f    g
+one    0.0  1.0  NaN  NaN
+two    0.0  1.0  NaN  NaN
+three  NaN  NaN  5.0  6.0
+>>>
+>>> pd.concat([s1, s2, s3], axis = 1, keys = ['one','two', 'three']) # 横向拼接，keys 变成列名
+   one  two  three
+a  0.0  NaN    NaN
+b  1.0  NaN    NaN
+c  NaN  2.0    NaN
+d  NaN  3.0    NaN
+e  NaN  4.0    NaN
+f  NaN  NaN    5.0
+g  NaN  NaN    6.0
+>>>
+>>> df1 = pd.DataFrame(np.arange(6).reshape(3, 2), index=['a', 'b', 'c'], columns=['one', 'two'])
+>>> df2 = pd.DataFrame(5 + np.arange(4).reshape(2, 2), index=['a', 'c'], columns=['three', 'four'])
+>>> df1
+   one  two
+a    0    1
+b    2    3
+c    4    5
+>>> df2
+   three  four
+a      5     6
+c      7     8
+>>> pd.concat([df1, df2], axis=1, keys=['level1', 'level2'])
+  level1     level2
+     one two  three four
+a      0   1    5.0  6.0
+b      2   3    NaN  NaN
+c      4   5    7.0  8.0
+>>> pd.concat({'level1': df1, 'level2': df2}, axis = 1)
+  level1     level2
+     one two  three four
+a      0   1    5.0  6.0
+b      2   3    NaN  NaN
+c      4   5    7.0  8.0
+>>> pd.concat([df1, df2], axis=1, keys = ['level1', 'level2'], names = ['upper', 'lower']) # 命名指定轴级别索引名称
+upper level1     level2
+lower    one two  three four
+a          0   1    5.0  6.0
+b          2   3    NaN  NaN
+c          4   5    7.0  8.0
+>>>
+>>> df1 = pd.DataFrame(np.random.randn(3, 4), columns=['a', 'b', 'c', 'd'])
+>>> df2 = pd.DataFrame(np.random.randn(2, 3), columns=['b', 'd', 'a'])
+>>> df1
+          a         b         c         d
+0  0.540245 -1.432206  1.282044  0.489050
+1  0.318615  0.790511  2.567630 -0.390115
+2  1.156002  0.164498  0.846345 -1.135219
+>>> df2
+          b         d         a
+0 -0.162024 -1.082169  0.775074
+1  0.428736  1.947893  0.962349
+>>>
+>>> pd.concat([df1, df2], ignore_index=True) # 不保留连接轴上的索引，产生一组新的索引
+          a         b         c         d
+0  0.540245 -1.432206  1.282044  0.489050
+1  0.318615  0.790511  2.567630 -0.390115
+2  1.156002  0.164498  0.846345 -1.135219
+3  0.775074 -0.162024       NaN -1.082169
+4  0.962349  0.428736       NaN  1.947893
+>>>
+>>> # 合并重叠数据
+>>> a = pd.Series([np.nan, 2.5, np.nan, 3.5, 4.5, np.nan], index=['f', 'e', 'd', 'c', 'b', 'a'])
+>>> b = pd.Series(np.arange(len(a), dtype=np.float64), index=['f', 'e', 'd', 'c', 'b', 'a'])
+>>> b[-1] = np.nan
+>>> a
+f    NaN
+e    2.5
+d    NaN
+c    3.5
+b    4.5
+a    NaN
+dtype: float64
+>>> b
+f    0.0
+e    1.0
+d    2.0
+c    3.0
+b    4.0
+a    NaN
+dtype: float64
+>>> np.where(pd.isnull(a), b, a) # 三目运算
+array([0. , 2.5, 2. , 3.5, 4.5, nan])
+>>> b[:-2].combine_first(a[2:]) # 效果同上，用传递对象中的数据为调用对象的缺失数据“打补丁”
+a    NaN
+b    4.5
+c    3.0
+d    2.0
+e    1.0
+f    0.0
+dtype: float64
+>>>
+>>> df1 = pd.DataFrame({'a': [1., np.nan, 5., np.nan], 'b': [np.nan, 2., np.nan, 6.], 'c': range(2, 18, 4)})
+>>> df2 = pd.DataFrame({'a': [5., 4., np.nan, 3., 7.], 'b': [np.nan, 3., 4., 6., 8.]})
+>>> df1
+     a    b   c
+0  1.0  NaN   2
+1  NaN  2.0   6
+2  5.0  NaN  10
+3  NaN  6.0  14
+>>> df2
+     a    b
+0  5.0  NaN
+1  4.0  3.0
+2  NaN  4.0
+3  3.0  6.0
+4  7.0  8.0
+>>> df1.combine_first(df2)
+     a    b     c
+0  1.0  NaN   2.0
+1  4.0  2.0   6.0
+2  5.0  4.0  10.0
+3  3.0  6.0  14.0
+4  7.0  8.0   NaN
+>>>
+>>> # 重塑层次化索引
+>>> df = pd.DataFrame(np.arange(6).reshape((2, 3)), index = pd.Index(['Ohio','Colorado'], name='state'), columns=pd.Index(['one', 'two', 'three'], name='number'))
+>>> df
+number    one  two  three
+state
+Ohio        0    1      2
+Colorado    3    4      5
+>>> result = df.stack() # 将数据的列“旋转”为行
+>>> result
+state     number
+Ohio      one       0
+          two       1
+          three     2
+Colorado  one       3
+          two       4
+          three     5
+dtype: int32
+>>> result.unstack() # 将数据的行“旋转”为列
+number    one  two  three
+state
+Ohio        0    1      2
+Colorado    3    4      5
+>>> result.unstack(0)
+state   Ohio  Colorado
+number
+one        0         3
+two        1         4
+three      2         5
+>>> result.unstack('state') # 指定层级
+state   Ohio  Colorado
+number
+one        0         3
+two        1         4
+three      2         5
+>>>
+>>> s1 = pd.Series([0, 1, 2, 3], index=['a', 'b', 'c', 'd'])
+>>> s2 = pd.Series([4, 5, 6], index=['c', 'd', 'e'])
+>>> df1 = pd.concat([s1, s2], keys=['one', 'two'])
+>>> df1
+one  a    0
+     b    1
+     c    2
+     d    3
+two  c    4
+     d    5
+     e    6
+dtype: int64
+>>> df1.unstack()
+       a    b    c    d    e
+one  0.0  1.0  2.0  3.0  NaN
+two  NaN  NaN  4.0  5.0  6.0
+>>> df1.unstack().stack()
+one  a    0.0
+     b    1.0
+     c    2.0
+     d    3.0
+two  c    4.0
+     d    5.0
+     e    6.0
+dtype: float64
+>>> df1.unstack().stack(dropna = False) # stack默认会滤除缺失数据，因此该运算是可逆的
+one  a    0.0
+     b    1.0
+     c    2.0
+     d    3.0
+     e    NaN
+two  a    NaN
+     b    NaN
+     c    4.0
+     d    5.0
+     e    6.0
+dtype: float64
+>>>
+>>> df = pd.DataFrame({'left': result, 'right': result + 5}, columns = pd.Index(['left', 'right'], name = 'side'))
+>>> df
+side             left  right
+state    number
+Ohio     one        0      5
+         two        1      6
+         three      2      7
+Colorado one        3      8
+         two        4      9
+         three      5     10
+>>> df.unstack('state') # 在对DataFrame进行unstack操作时，作为旋转轴的级别将会成为结果中的最低级别
+side   left          right
+state  Ohio Colorado  Ohio Colorado
+number
+one       0        3     5        8
+two       1        4     6        9
+three     2        5     7       10
+>>> df.unstack('state').stack('side')
+state         Colorado  Ohio
+number side
+one    left          3     0
+       right         8     5
+two    left          4     1
+       right         9     6
+three  left          5     2
+       right        10     7
+```
+
 ### 7.4.7 时间序列
 
 ### 7.4.8 高级
