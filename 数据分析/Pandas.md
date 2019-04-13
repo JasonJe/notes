@@ -2703,6 +2703,465 @@ three  left          5     2
        right        10     7
 ```
 
+* 分组
+
+```python
+>>> import pandas as pd
+>>> import numpy as np
+>>>
+>>> df = pd.DataFrame({'key1' : ['a', 'a', 'b', 'b', 'a'], 'key2' : ['one', 'two', 'one', 'two', 'one'], 'data1' : np.random.randn(5), 'data2' : np.random.randn(5)})
+>>> df
+  key1 key2     data1     data2
+0    a  one -0.296159 -1.964854
+1    a  two  0.490876  0.484856
+2    b  one -0.047975  1.882631
+3    b  two  1.206025  0.174956
+4    a  one -1.639627 -0.715221
+>>> grouped = df['data1'].groupby(df['key1']) # 指定某列按照 key1 分组
+>>> grouped.mean()
+key1
+a   -0.481637
+b    0.579025
+Name: data1, dtype: float64
+>>> df['data1'].groupby([df['key1'], df['key2']]).mean() # 按照指定的两个列分组后求均值
+key1  key2
+a     one    -0.967893
+      two     0.490876
+b     one    -0.047975
+      two     1.206025
+Name: data1, dtype: float64
+>>>
+>>> states = np.array(['Ohio', 'California', 'California', 'Ohio', 'Ohio'])
+>>> years = np.array([2005, 2005, 2006, 2005, 2006])
+>>> df['data1'].groupby([states, years]).mean() # 指定每行对应的索引后进行分组
+California  2005    0.490876
+            2006   -0.047975
+Ohio        2005    0.454933
+            2006   -1.639627
+Name: data1, dtype: float64
+>>>
+>>> df.groupby('key1').mean() # 指定表按照 key1 分组
+         data1     data2
+key1
+a    -0.481637 -0.731740
+b     0.579025  1.028793
+>>> df.groupby(['key1', 'key2']).mean()
+              data1     data2
+key1 key2
+a    one  -0.967893 -1.340037
+     two   0.490876  0.484856
+b    one  -0.047975  1.882631
+     two   1.206025  0.174956
+>>> df.groupby(['key1', 'key2']).size() # 求分组后每组的大小
+key1  key2
+a     one     2
+      two     1
+b     one     1
+      two     1
+dtype: int64
+>>>
+>>> # 分组迭代
+>>> for name, group in df.groupby('key1'):
+...     print(name)
+...     print(group)
+...
+a
+  key1 key2     data1     data2
+0    a  one -0.296159 -1.964854
+1    a  two  0.490876  0.484856
+4    a  one -1.639627 -0.715221
+b
+  key1 key2     data1     data2
+2    b  one -0.047975  1.882631
+3    b  two  1.206025  0.174956
+>>> for (k1, k2), group in df.groupby(['key1', 'key2']):
+...     print((k1, k2))
+...     print(group)
+...
+('a', 'one')
+  key1 key2     data1     data2
+0    a  one -0.296159 -1.964854
+4    a  one -1.639627 -0.715221
+('a', 'two')
+  key1 key2     data1     data2
+1    a  two  0.490876  0.484856
+('b', 'one')
+  key1 key2     data1     data2
+2    b  one -0.047975  1.882631
+('b', 'two')
+  key1 key2     data1     data2
+3    b  two  1.206025  0.174956
+>>> pieces = dict(list(df.groupby('key1'))) # 将分组当成一个字典
+>>> pieces
+{'a':   key1 key2     data1     data2
+0    a  one -0.296159 -1.964854
+1    a  two  0.490876  0.484856
+4    a  one -1.639627 -0.715221, 'b':   key1 key2     data1     data2
+2    b  one -0.047975  1.882631
+3    b  two  1.206025  0.174956}
+>>>
+>>> df.dtypes
+key1      object
+key2      object
+data1    float64
+data2    float64
+dtype: object
+>>> grouped = df.groupby(df.dtypes, axis=1) # 按照类型分组
+>>> for dtype, group in grouped:
+...     print(dtype)
+...     print(group)
+...
+float64
+      data1     data2
+0 -0.296159 -1.964854
+1  0.490876  0.484856
+2 -0.047975  1.882631
+3  1.206025  0.174956
+4 -1.639627 -0.715221
+object
+  key1 key2
+0    a  one
+1    a  two
+2    b  one
+3    b  two
+4    a  one
+>>>
+>>> # 选取某列的子集
+>>> df.groupby(['key1', 'key2'])[['data2']].mean()
+              data2
+key1 key2
+a    one  -1.340037
+     two   0.484856
+b    one   1.882631
+     two   0.174956
+>>> s_grouped  = df.groupby(['key1', 'key2'])['data2']
+>>> s_grouped.mean()
+key1  key2
+a     one    -1.340037
+      two     0.484856
+b     one     1.882631
+      two     0.174956
+Name: data2, dtype: float64
+>>>
+>>> # 通过字典或 Series 分组
+>>> people = pd.DataFrame(np.random.randn(5, 5), columns=['a', 'b', 'c', 'd', 'e'], index=['Joe', 'Steve', 'Wes', 'Jim', 'Travis'])
+>>> people.iloc[2:3, [1, 2]] = np.nan
+>>> people
+               a         b         c         d         e
+Joe     0.424557 -0.005562  0.644771 -1.527423 -1.763429
+Steve  -0.511867 -1.825093  0.970510  0.926331  0.317576
+Wes    -1.030695       NaN       NaN  0.341934 -0.056919
+Jim     0.356591  0.369781  0.566692  0.167915  0.454313
+Travis -0.380479 -0.115895  1.095088 -1.042988  1.356148
+>>>
+>>> mapping = {'a': 'red', 'b': 'red', 'c': 'blue', 'd': 'blue', 'e': 'red', 'f' : 'orange'}
+>>> by_column = people.groupby(mapping, axis = 1)
+>>> by_column.sum()
+            blue       red
+Joe    -0.882651 -1.344434
+Steve   1.896841 -2.019384
+Wes     0.341934 -1.087615
+Jim     0.734607  1.180685
+Travis  0.052100  0.859774
+>>>
+>>> map_series = pd.Series(mapping)
+>>> map_series
+a       red
+b       red
+c      blue
+d      blue
+e       red
+f    orange
+dtype: object
+>>> people.groupby(map_series, axis = 1).count() # 计算数量
+        blue  red
+Joe        2    3
+Steve      2    3
+Wes        1    2
+Jim        2    3
+Travis     2    3
+>>>
+>>> # 通过函数分组
+>>> people.groupby(len).sum()
+          a         b         c         d         e
+3 -0.249547  0.364219  1.211464 -1.017574 -1.366036
+5 -0.511867 -1.825093  0.970510  0.926331  0.317576
+6 -0.380479 -0.115895  1.095088 -1.042988  1.356148
+>>> key_list = ['one', 'one', 'one', 'two', 'two']
+>>> people.groupby([len, key_list]).min()
+              a         b         c         d         e
+3 one -1.030695 -0.005562  0.644771 -1.527423 -1.763429
+  two  0.356591  0.369781  0.566692  0.167915  0.454313
+5 one -0.511867 -1.825093  0.970510  0.926331  0.317576
+6 two -0.380479 -0.115895  1.095088 -1.042988  1.356148
+>>>
+>>> # 
+>>> columns = pd.MultiIndex.from_arrays([['US', 'US', 'US', 'JP', 'JP'], [1, 3, 5, 1, 3]], names = ['cty', 'tenor'])
+>>> hier_df = pd.DataFrame(np.random.randn(4, 5), columns = columns)
+>>> hier_df
+cty          US                            JP
+tenor         1         3         5         1         3
+0      0.119116  1.243414  0.325555  0.790014 -1.194997
+1      1.135141  1.890262  1.196081 -0.345959 -1.271117
+2     -0.242083  0.860681  0.646477  1.889308 -0.299354
+3     -0.123762 -0.011193  1.084885 -1.488621  0.199857
+>>>
+>>> hier_df.groupby(level='cty', axis = 1).count() # 指定某一等级进行分组
+cty  JP  US
+0     2   3
+1     2   3
+2     2   3
+3     2   3
+```
+
+* 聚合
+
+```python
+>>> df = pd.DataFrame({'key1' : ['a', 'a', 'b', 'b', 'a'], 'key2' : ['one', 'two', 'one', 'two', 'one'], 'data1' : np.random.randn(5), 'data2' : np.random.randn(5)})
+>>> df
+  key1 key2     data1     data2
+0    a  one -0.247505  0.839460
+1    a  two -1.737265 -1.131199
+2    b  one  1.383777 -0.376133
+3    b  two  0.113274  0.592628
+4    a  one -0.690304 -0.867604
+>>> grouped = df.groupby('key1')
+>>> grouped['data1'].quantile(0.9) # 计算90% 分位数
+key1
+a   -0.336065
+b    1.256727
+Name: data1, dtype: float64
+>>> def peak_to_peak(arr):
+...     return arr.max() - arr.min()
+...
+>>> grouped.agg(peak_to_peak) # 自定义聚合函数
+         data1     data2
+key1
+a     1.489760  1.970659
+b     1.270503  0.968761
+>>> grouped.describe() # 分组进行描述函数
+     data1                                            ...        data2
+     count      mean       std       min       25%    ...          min       25%       50%       75%       max
+key1                                                  ...
+a      3.0 -0.891691  0.765025 -1.737265 -1.213784    ...    -1.131199 -0.999401 -0.867604 -0.014072  0.839460
+b      2.0  0.748525  0.898381  0.113274  0.430900    ...    -0.376133 -0.133942  0.108248  0.350438  0.592628
+
+[2 rows x 16 columns]
+>>>
+>>> tips = pd.DataFrame({'total_bill': [16.99, 10.34, 21.01, 23.68, 24.59, 25.29], 'tip': [1.01, 1.66, 3.50, 3.31, 3.61, 4.71], 'smoker': ['No', 'No', 'No', 'No', 'No', 'No'], 'day': ['Sun', 'Sun', 'Sun', 'Sun', 'Sun', 'Sun'], 'time': ['Dinner', 'Dinner', 'Dinner', 'Dinner', 'Dinner', 'Dinner'], 'size': [2, 3, 3, 2, 4, 4]})
+>>> tips
+   total_bill   tip smoker  day    time  size
+0       16.99  1.01     No  Sun  Dinner     2
+1       10.34  1.66     No  Sun  Dinner     3
+2       21.01  3.50     No  Sun  Dinner     3
+3       23.68  3.31     No  Sun  Dinner     2
+4       24.59  3.61     No  Sun  Dinner     4
+5       25.29  4.71     No  Sun  Dinner     4
+>>> tips['tip_pct'] = tips['tip'] / tips['total_bill']
+>>> tips
+   total_bill   tip smoker  day    time  size   tip_pct
+0       16.99  1.01     No  Sun  Dinner     2  0.059447
+1       10.34  1.66     No  Sun  Dinner     3  0.160542
+2       21.01  3.50     No  Sun  Dinner     3  0.166587
+3       23.68  3.31     No  Sun  Dinner     2  0.139780
+4       24.59  3.61     No  Sun  Dinner     4  0.146808
+5       25.29  4.71     No  Sun  Dinner     4  0.186240
+>>> grouped = tips.groupby(['day', 'smoker']) # 按照 day smoker 分组
+>>> grouped_pct = grouped['tip_pct'] # 选取指定列
+>>> grouped_pct.agg('mean') # 求均值
+day  smoker
+Sun  No        0.143234
+Name: tip_pct, dtype: float64
+>>> grouped_pct.agg(['mean', 'std', peak_to_peak]) # 求mean std peak_to_peak
+                mean       std  peak_to_peak
+day smoker
+Sun No      0.143234  0.044135      0.126793
+>>> grouped_pct.agg([('foo', 'mean'), ('bar', np.std)]) # 对聚合函数进行重命名
+                 foo       bar
+day smoker
+Sun No      0.143234  0.044135
+>>>
+>>> functions = ['count', 'mean', 'max']
+>>> result = grouped['tip_pct', 'total_bill'].agg(functions) # 对列应用函数组计算
+>>> result
+           tip_pct                    total_bill
+             count      mean      max      count       mean    max
+day smoker
+Sun No           6  0.143234  0.18624          6  20.316667  25.29
+>>> result['tip_pct']
+            count      mean      max
+day smoker
+Sun No          6  0.143234  0.18624
+>>>
+>>> ftuples = [('Durchschnitt', 'mean'),('Abweichung', np.var)]
+>>> grouped['tip_pct', 'total_bill'].agg(ftuples) # 指定自定义名称
+                tip_pct              total_bill
+           Durchschnitt Abweichung Durchschnitt Abweichung
+day smoker
+Sun No         0.143234   0.001948    20.316667  33.077747
+>>> grouped.agg({'tip' : np.max, 'size' : 'sum'})
+             tip  size
+day smoker
+Sun No      4.71    18
+>>> grouped.agg({'tip_pct' : ['min', 'max', 'mean', 'std'], 'size' : 'sum'})
+             tip_pct                              size
+                 min      max      mean       std  sum
+day smoker
+Sun No      0.059447  0.18624  0.143234  0.044135   18
+>>>
+>>> tips.groupby(['day', 'smoker'], as_index = False).mean() # 聚合数据都有由唯一的分组键组成的索引（可能还是层次化的）。可以向groupby传入as_index=False以禁用该功能
+   day smoker  total_bill       tip  size   tip_pct
+0  Sun     No   20.316667  2.966667     3  0.143234
+>>>
+>>> def top(df, n = 5, column='tip_pct'):
+...     return df.sort_values(by=column)[-n:]
+...
+>>> top(tips, n = 6)
+   total_bill   tip smoker  day    time  size   tip_pct
+0       16.99  1.01     No  Sun  Dinner     2  0.059447
+3       23.68  3.31     No  Sun  Dinner     2  0.139780
+4       24.59  3.61     No  Sun  Dinner     4  0.146808
+1       10.34  1.66     No  Sun  Dinner     3  0.160542
+2       21.01  3.50     No  Sun  Dinner     3  0.166587
+5       25.29  4.71     No  Sun  Dinner     4  0.186240
+>>> tips.groupby('smoker').apply(top) # 对每个分组调用这个函数
+          total_bill   tip smoker  day    time  size   tip_pct
+smoker
+No     3       23.68  3.31     No  Sun  Dinner     2  0.139780
+       4       24.59  3.61     No  Sun  Dinner     4  0.146808
+       1       10.34  1.66     No  Sun  Dinner     3  0.160542
+       2       21.01  3.50     No  Sun  Dinner     3  0.166587
+       5       25.29  4.71     No  Sun  Dinner     4  0.186240
+>>> tips.groupby(['smoker', 'day']).apply(top, n = 1, column = 'total_bill') # 指定函数的参数
+              total_bill   tip smoker  day    time  size  tip_pct
+smoker day
+No     Sun 5       25.29  4.71     No  Sun  Dinner     4  0.18624
+>>> result = tips.groupby('smoker')['tip_pct'].describe() # 指定分组的列进行函数
+>>> result
+        count      mean       std       min       25%       50%       75%      max
+smoker
+No        6.0  0.143234  0.044135  0.059447  0.141537  0.153675  0.165076  0.18624
+>>> result.unstack('smoker')
+       smoker
+count  No        6.000000
+mean   No        0.143234
+std    No        0.044135
+min    No        0.059447
+25%    No        0.141537
+50%    No        0.153675
+75%    No        0.165076
+max    No        0.186240
+dtype: float64
+>>>
+>>> grouped.apply(lambda x: x.describe()) # 匿名函数
+                  total_bill       tip      size   tip_pct
+day smoker
+Sun No     count    6.000000  6.000000  6.000000  6.000000
+           mean    20.316667  2.966667  3.000000  0.143234
+           std      5.751326  1.370499  0.894427  0.044135
+           min     10.340000  1.010000  2.000000  0.059447
+           25%     17.995000  2.072500  2.250000  0.141537
+           50%     22.345000  3.405000  3.000000  0.153675
+           75%     24.362500  3.582500  3.750000  0.165076
+           max     25.290000  4.710000  4.000000  0.186240
+>>> tips.groupby('smoker', group_keys = False).apply(top) # 禁用分组键
+   total_bill   tip smoker  day    time  size   tip_pct
+3       23.68  3.31     No  Sun  Dinner     2  0.139780
+4       24.59  3.61     No  Sun  Dinner     4  0.146808
+1       10.34  1.66     No  Sun  Dinner     3  0.160542
+2       21.01  3.50     No  Sun  Dinner     3  0.166587
+5       25.29  4.71     No  Sun  Dinner     4  0.186240
+>>>
+>>> # 分位数和桶分析
+>>> df = pd.DataFrame({'data1': np.random.randn(1000), 'data2': np.random.randn(1000)})
+>>> quartiles = pd.cut(df.data1, 4) # 按照样本分位数分成 4 个片，每个片长度相等
+>>>
+>>> def get_stats(group):
+...     return {'min': group.min(), 'max': group.max(), 'count': group.count(), 'mean': group.mean()}
+...
+>>> grouped = df.data2.groupby(quartiles)
+>>> grouped.apply(get_stats).unstack()
+                   count       max      mean       min
+data1
+(-3.126, -1.602]    60.0  2.198863  0.117761 -2.136785
+(-1.602, -0.0846]  418.0  3.620271 -0.063688 -2.881248
+(-0.0846, 1.433]   441.0  3.494448 -0.044065 -2.521566
+(1.433, 2.951]      81.0  2.616863  0.106218 -2.036658
+>>>
+>>> grouping = pd.qcut(df.data1, 10, labels = False) # 按照样本分位数进行分片，每个片长度不等
+>>> grouped = df.data2.groupby(grouping)
+>>> grouped.apply(get_stats).unstack()
+       count       max      mean       min
+data1
+0      100.0  2.675240  0.027128 -2.314295
+1      100.0  1.806032 -0.103512 -2.457887
+2      100.0  3.620271 -0.003968 -2.881248
+3      100.0  2.254870 -0.094208 -2.026318
+4      100.0  1.978568 -0.021608 -2.000379
+5      100.0  3.031282 -0.040011 -2.301995
+6      100.0  1.753286 -0.180444 -2.153139
+7      100.0  3.494448  0.035509 -2.356695
+8      100.0  2.597087  0.012859 -2.521566
+9      100.0  2.616863  0.064407 -2.036658
+>>>
+>>> # 透视表和交叉表
+>>> tips.pivot_table(index=['day', 'smoker']) # 按照指定列进行透视表
+            size       tip   tip_pct  total_bill
+day smoker
+Sun No         3  2.966667  0.143234   20.316667
+>>> tips.pivot_table(['tip_pct', 'size'], index=['time', 'day'], columns = 'smoker') # 聚合tip_pct和size，根据time, day进行分组，smoker作为列
+           size   tip_pct
+smoker       No        No
+time   day
+Dinner Sun    3  0.143234
+>>> tips.pivot_table(['tip_pct', 'size'], index=['time', 'day'], columns='smoker', margins=True)
+           size       tip_pct
+smoker       No All        No       All
+time   day
+Dinner Sun    3   3  0.143234  0.143234
+All           3   3  0.143234  0.143234
+>>> tips.pivot_table('tip_pct', index = ['time', 'smoker'], columns='day', aggfunc = len, margins = True) # 使用指定的聚合函数
+day            Sun  All
+time   smoker
+Dinner No      6.0  6.0
+All            6.0  6.0
+>>> tips.pivot_table('tip_pct', index=['time', 'size', 'smoker'], columns='day', aggfunc='mean', fill_value = 0) # 前冲空值后进行聚合
+day                      Sun
+time   size smoker
+Dinner 2    No      0.099614
+       3    No      0.163564
+       4    No      0.166524
+>>> # 交叉表
+>>> df
+   Sample Nationality    Handedness
+0       1         USA  Right-handed
+1       2       Japan   Left-handed
+2       3         USA  Right-handed
+3       4       Japan  Right-handed
+4       5       Japan   Left-handed
+5       6       Japan  Right-handed
+6       7         USA  Right-handed
+7       8         USA   Left-handed
+8       9       Japan  Right-handed
+9      10         USA  Right-handed
+>>> pd.crosstab(df.Nationality, df.Handedness, margins = True)
+Handedness   Left-handed  Right-handed  All
+Nationality
+Japan                  2             3    5
+USA                    1             4    5
+All                    3             7   10
+>>> pd.crosstab([tips.time, tips.day], tips.smoker, margins=True)
+smoker        No  Yes  All
+time   day                
+Dinner Fri     3    9   12
+       Sat    45   42   87
+       Sun    57   19   76
+       Thur    1    0    1
+Lunch  Fri     1    6    7
+       Thur   44   17   61
+All          151   93  244
+```
+
 ### 7.4.7 时间序列
 
 ### 7.4.8 高级
