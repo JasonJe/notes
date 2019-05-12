@@ -72,7 +72,7 @@
 <details>
 <summary><strong>:electric_plug: 6. 分布式</strong></summary>
 
-#### 6.1 分布式设计
+#### 6.1 [分布式设计](分布式/分布式设计.md)
 
 #### 6.2 [中间件-消息队列](分布式/中间件-消息队列.md)
 
