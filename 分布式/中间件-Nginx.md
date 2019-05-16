@@ -72,6 +72,167 @@ server {
 
 正向代理是代理客户端，为客户端收发请求，使真实客户端对服务器不可见；而反向代理是代理服务器端，为服务器收发请求，使真实服务器对客户端不可见。
 
-### 6.5.4 缓存服务
+反向代理(`Reverse Proxy`)方式是指以代理服务器来接受`Internet`上的连接请求，然后将请求转发给内部网络上的服务器，并将从服务器上得到的结果返回给`Internet`上请求连接的客户端，此时代理服务器对外就表现为一个服务器。
 
-### 6.5.5 负载均衡
+反向代理的作用
+
+1. 保护网站安全：任何来自`Internet`的请求都必须先经过代理服务器；
+
+2. 通过配置缓存功能加速`Web`请求：可以缓存真实`Web`服务器上的某些静态资源，减轻真实`Web`服务器的负载压力；
+
+3. 实现负载均衡：充当负载均衡服务器均衡地分发请求，平衡集群中各个服务器的负载压力。
+
+`Nginx`的网络模式是事件驱动，其能在多个`I/O`句柄中快速切换，针对`I/O`密集型的工作更加得心应手。如在反向代理中，其在客户端和`Web`应用之间只起到数据中转的作用，这里只存在纯粹的`I/O`操作。
+
+```
+server {
+    listen 80;
+    server_name  www.outside.com; # 访问的域名地址 
+
+    location / {
+        proxy_pass http://www.inside.com; # 将域名地址的请求转发到实际的地址
+    }
+}
+```
+
+正向代理：如果把局域网外的`Internet`想象成一个巨大的资源库，则局域网中的客户端要访问`Internet`，则需要通过代理服务器来访问才能访问得到，这种代理服务就称为正向代理。
+
+```
+# 假设此服务器能访问公网，IP为192.168.1.222
+server {  
+    resolver 114.114.114.114; # 指定DNS服务器IP地址  
+    listen 8080;  
+    location / {  
+        proxy_pass http://$http_host$request_uri; # 设定代理服务器的协议和地址  
+    }  
+}  
+```
+
+其它不能访问公网的服务器通过设置代理的方式访问公网，如下：
+
+```
+# curl -x 192.168.1.222:8080 -I http://xxxx.xxxx.xxxx/xxx.xxx
+```
+
+### 6.5.4 负载均衡
+
+在反向代理的基础上，`Nginx`实现负载均衡变得十分简单，依赖于`Nginx`的`ngx_http_upstream_module`模块，其可以实现多种转发策略。
+
+```
+# 1 默认采用轮询(Round-Robin)的方式将请求转发到组中服务器
+http {
+    upstream app_group { # 定义一个后端的服务器组，命名为app_group
+        server 192.168.56.102;
+        server 192.168.56.103;
+        server 192.168.56.104;
+    }
+
+    server {
+        listen 80;
+        server_name  www.example.com;
+
+        location / {
+            proxy_pass http://app_group;
+        }
+    }
+}
+
+# 2 最少连接(Least-connected)策略，在该策略下会尝试避繁忙的机器，将请转到有减少连接较少的机器上，该策略可以环节呢后端服务器负载冷热不均的问题
+upstream app_group {
+    least_conn;
+    server 192.168.56.102;
+    server 192.168.56.103;
+    server 192.168.56.104;
+}
+
+# 3 最少耗时(Least-time)策略：该策略会将请求转到都具有最小平均影响时间和最少活动链接的后端服务器
+upstream app_group {
+    least_time;
+    server 192.168.56.102;
+    server 192.168.56.103;
+    server 192.168.56.104;
+}
+
+# 4 回话保持(Session persistence)策略，在轮询或者最少连接策略下，同一个用户(同一个客户端IP)的不同请求会随机分配到不同的后端服务器上。回话保持策略会通过客户端 IP 计算一个成 Hash 值，按照 hash 值分配后端服务器，该策略可以使得同一个用户的请求落在同一个后端主机上
+upstream app_group {
+    ip_hash;
+    server 192.168.56.102;
+    server 192.168.56.103;
+    server 192.168.56.104;
+}
+
+# 5 自定义 Hash 策略，前面介绍的回话保持策略通过客户端IP计算 hash 值，自定义 hash 策略可以根据用户自己定的主键计算hash值，比如使用 uri 作为 key 计算hash，同时还可以指定可选参数来选择使用何种 hash 算法
+
+upstream app_group {
+    hash $request_uri;
+    server 192.168.56.102;
+    server 192.168.56.103;
+    server 192.168.56.104;
+}
+
+# 6 基于权重策略，Nginx 可以为不同的主机配置不同的权重，按照权重比例转发流量
+upstream app_group {
+    server 192.168.56.102 weight=3;
+    server 192.168.56.103;
+    server 192.168.56.104;
+}
+```
+
+### 6.5.5 缓存服务
+
+`Nginx`的`http_proxy`模块，可以对客户已经访问过的内容在`Nginx`服务器本地建立副本，在一段时间内再次访问该数据，就不需要通过`Nginx`服务器再次向后端服务器发出请求，所以能够减少`Nginx`服务器与后端服务器之间的网络流量，减轻网络拥塞，同时还能减小数据传输延迟，提高用户访问速度。同时，当后端服务器宕机时，`Nginx`服务器上的副本资源还能够相应相关的用户请求，这样能够提高后端服务器的鲁棒性。
+
+```
+proxy_temp_path /var/tmp/nginx/proxy; #  缓存临时目录
+
+# proxy_cache_path 设置缓存目录，目录里的文件名是 cache_key 的MD5值
+# levels=1:2 keys_zone=cache_one:50m 表示采用2级目录结构，Web缓存区名称为cache_one，内存缓存空间大小为100MB，这个缓冲zone可以被多次使用
+# inactive=1d max_size=5g 表示2天没有被访问的内容自动清除，硬盘最大缓存空间为2GB，超过这个大学将清除最近最少使用的数据
+proxy_cache_path /var/tmp/nginx/cache levels=1:2 keys_zone=cache_one:20m inactive=1d max_size=5g;
+
+server {
+
+ listen  80;
+ server_name localhost;
+
+ root /var/www;
+
+ location ~ \.(jpg|png|jpeg|gif|css|js)$ {
+  proxy_cache cache_one; # 引用前面定义的缓存区 cache_one
+
+  proxy_cache_valid 200 304 12h; #  为不同的响应状态码设置不同的缓存时间，比如200、302等正常结果可以缓存的时间长点，而404、500等缓存时间设置短一些，这个时间到了文件就会过期，而不论是否刚被访问过
+
+  proxy_cache_key $host$uri$is_args$args; # 定义cache_key
+  proxy_set_header Host $host;
+  proxy_set_header X-Forwarded-For $remote_addr;
+  proxy_pass http://127.0.0.1:8181;
+  proxy_set_header X-Forwarded_For $proxy_add_x_forwarded_for;
+  expires 1d;
+ }
+}
+```
+
+### 6.5.6 限流
+
+`Nginx`接入层的限流可以使用`Nginx`自带了两个模块：连接数限流模块`ngx_http_limit_conn_module`和漏桶算法实现的请求限流模块`ngx_http_limit_req_module`。
+
+```
+http {
+    # 针对每个变量(这里指IP，即$binary_remote_addr)定义一个存储session状态的容器。这里定义了一个20m的容器，按照32bytes/session，可以处理640000个session
+    limit_zone one  $binary_remote_addr  20m;
+    # rate是请求频率. 每秒允许12个请求
+    limit_req_zone  $binary_remote_addr  zone=req_one:20m rate=12r/s;
+    # 表示一个IP能发起10个并发连接数
+    limit_conn   one  10;
+    # 与limit_req_zone对应。burst表示缓存住的请求数
+    limit_req   zone=req_one burst=120;
+    server  {
+            listen          80;
+            server_name     status.xxx.com ;
+            location / {
+                    stub_status            on;
+                    access_log             off;
+            }
+    }
+}
+```
