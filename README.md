@@ -1,8 +1,11 @@
-# :dart: Python 全栈
+# :dart: JasonJe 的技术笔记
 
 ![](./assets/images/00.jpg)
 
-![](http://progressed.io/bar/56?title=进度)
+![progressed](http://progressed.io/bar/56?title=进度)
+![lastcommit](<https://img.shields.io/github/last-commit/JasonJe/notes.svg>)
+
+## 目录
 
 <details>
 <summary><strong>:snake: 1. Python 高级编程</strong></summary>
@@ -93,14 +96,28 @@
 
 #### 7.2 [数据分析方法](数据分析/数据分析方法.md)
 
-#### 7.3 [`Numpy`](数据分析/Numpy.md)
+#### 7.3 [`Numpy`](数据分析/NumPy.md)
+
+#### 7.4 [`Pandas`](数据分析/Pandas.md)
+
+#### 7.5 数据可视化
 
 Linux 的 awk、grep、sed
 
 </details>
 
 <details>
-<summary><strong>:mortar_board: 题目整理</strong></summary>
+<summary><strong>:telescope: 8. 机器学习</strong></summary>
+
+</details>
+
+<details>
+<summary><strong>:thought_balloon: 9. 深度学习</strong></summary>
+
+</details>
+
+<details>
+<summary><strong>:mortar_board: 10. 题目整理</strong></summary>
 
 #### [算法与数据结构](题目整理/算法与数据结构.md)
 
@@ -114,8 +131,13 @@ Linux 的 awk、grep、sed
 
 </details>
 
-## 数据可视化
+## 说明
 
-## 机器学习
 
-## 深度学习
+## License
+
+<div align="center">
+    <a rel="license" href="http://creativecommons.org/licenses/by-nc-sa/4.0/">
+        <img alt="知识共享许可协议" style="border-width:0" src="https://i.creativecommons.org/l/by-nc-sa/4.0/88x31.png" />
+    </a>
+</div>
