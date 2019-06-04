@@ -1,6 +1,6 @@
-# :dart: JasonJe 的技术笔记
-
 ![](./assets/images/00.jpg)
+
+# :dart: JasonJe 的技术笔记
 
 ![progressed](http://progressed.io/bar/56?title=进度)
 ![lastcommit](<https://img.shields.io/github/last-commit/JasonJe/notes.svg>)
@@ -100,7 +100,7 @@
 
 #### 7.4 [`Pandas`](数据分析/Pandas.md)
 
-#### 7.5 数据可视化
+#### 7.5 [数据可视化](数据分析/数据可视化.md)
 
 Linux 的 awk、grep、sed
 
