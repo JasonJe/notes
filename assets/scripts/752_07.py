@@ -31,5 +31,6 @@ sns.regplot(x = "x", y = "y", data = anscombe.query("dataset == 'III'"), ci = No
 plt.subplot(3, 2, 6)
 sns.regplot(x = "x", y = "y", data = anscombe.query("dataset == 'III'"), ci = None, robust = True) # 数据中有明显错误的数据点可以进行删除
 
+fig.tight_layout()
 plt.savefig('../images/752_07.png')
 plt.show()
