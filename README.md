@@ -102,12 +102,18 @@
 
 #### 7.5 [数据可视化](数据分析/数据可视化.md)
 
-Linux 的 awk、grep、sed
-
 </details>
 
 <details>
 <summary><strong>:telescope: 8. 机器学习</strong></summary>
+
+#### 8.1 基础概念
+
+#### 8.2 监督学习
+
+#### 8.3 集成学习
+
+#### 8.4 非监督学习
 
 </details>
 
