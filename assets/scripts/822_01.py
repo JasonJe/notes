@@ -231,7 +231,7 @@ def grabTree(filename):
     fr = open(filename,'rb')
     return pickle.load(fr)
 
-storeTree(myTree,'822_02.txt') # 保存到mytree.txt文件中
+storeTree(myTree,'822_02.txt') # 保存到822_02.txt文件中
 grabTree('822_02.txt') # 加载保存的决策树
 
 #### 使用Scikit - Learn库实现决策树
