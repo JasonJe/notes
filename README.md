@@ -1,8 +1,7 @@
 ![](./assets/images/00.jpg)
 
-# :dart: JasonJe 的技术笔记
+# :dart: 技术笔记
 
-![progressed](http://progressed.io/bar/56?title=进度)
 ![lastcommit](<https://img.shields.io/github/last-commit/JasonJe/notes.svg>)
 
 ## 目录
