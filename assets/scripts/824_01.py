@@ -221,21 +221,21 @@ def svm(data_mat, label_mat, C = 1, toler = 0.01, max_iter = 1000, kernel = 'rbf
         elif (alpha_pairs_changed == 0):
             entire_set = True 
         print("迭代次数: %d" % iter_num)
-    error_count = predict(data_mat, label_mat, b, alphas, kernel = kernel, sigma = sigma, degree = degree, theta = theta)
+    error_count = predict(data_mat, label_mat, data_mat, label_mat, b, alphas, kernel = kernel, sigma = sigma, degree = degree, theta = theta)
     print("训练集错误率: %.2f%%" % (error_count * 100))
     return b, alphas
 
-def predict(data_mat, label_mat, b, alphas, **params):
+def predict(data_mat, label_mat, test_data_mat, test_label_mat, b, alphas, **params):
     support_vector_index = np.nonzero(alphas.A > 0)[0]
     support_vectors = data_mat[support_vector_index]
     label_support_vectors = label_mat[support_vector_index]
     
-    m, n = np.shape(data_mat)
+    m, n = np.shape(test_data_mat)
     error_count = 0
     for i in range(m):
-        kernel_eval = _kernel_map(support_vectors, data_mat[i, :], **params)
+        kernel_eval = _kernel_map(support_vectors, test_data_mat[i, :], **params)
         predict = kernel_eval.T * np.multiply(label_support_vectors, alphas[support_vector_index]) + b
-        if np.sign(predict) != np.sign(label_mat[i]):
+        if np.sign(predict) != np.sign(test_label_mat[i]):
             error_count += 1
     return float(error_count) / m
 
@@ -246,12 +246,14 @@ if __name__ == "__main__":
 
     ##########
     data_mat, label_mat = load_dataset('824_02.txt')
-    b, alphas = svm(data_mat, label_mat, C = 200, toler = 0.0001, max_iter = 100)
+    b, alphas = svm(data_mat, label_mat, C = 200, toler = 0.0001, max_iter = 100, kernel = 'rbf', sigma = 1.3)
 
     ##########
-    data_mat, label_mat = load_dataset('824_03.txt')
+    test_data_mat, test_label_mat = load_dataset('824_03.txt')
     data_mat = np.mat(data_mat)
     label_mat = np.mat(label_mat).transpose()
-    error_count = predict(data_mat, label_mat, b, alphas, kernel = 'rbf', sigma = None, degree = 3, theta = 0.2)
+    test_data_mat = np.mat(test_data_mat)
+    test_label_mat = np.mat(test_label_mat).transpose()
+    error_count = predict(data_mat, label_mat, test_data_mat, test_label_mat, b, alphas, kernel = 'rbf', sigma = 1.3, degree = 3, theta = 0.2)
     print("测试集错误率: %.2f%%" % (error_count * 100))
 
