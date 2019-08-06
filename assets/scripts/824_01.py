@@ -3,7 +3,7 @@ import numpy as np
 from matplotlib import pyplot as plt
 
 def load_dataset(filepath):
-    data_mat, label_mat= [], []
+    data_mat, label_mat = [], []
     f = open(filepath)
     for line in f.readlines():
         line_list = line.split(',')
@@ -241,6 +241,7 @@ def predict(data_mat, label_mat, test_data_mat, test_label_mat, b, alphas, **par
 
 if __name__ == "__main__":
     data_mat, label_mat = load_dataset('824_01.txt')
+    show_dataset(data_mat, label_mat)
     b, alphas = svm(data_mat, label_mat, kernel = 'linear')
     show_classifer(data_mat, label_mat, b, alphas)
 
