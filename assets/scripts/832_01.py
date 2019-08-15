@@ -109,25 +109,25 @@ def predict(rand_forests, test_data):
     return prediction
 
 if __name__ == "__main__":
-    from sklearn.datasets import make_classification
+    from sklearn.datasets import make_classification # 生成200个2分类的样本，特征数量为100
     data, lables = make_classification(n_samples = 200, n_features = 100,n_classes = 2)
     data_set = np.concatenate((data, lables.reshape(200, 1)), axis=1)
-    np.random.shuffle(data_set)
+    np.random.shuffle(data_set) # 随机打乱数据
 
-    train_data_set = data_set[:150, :]
+    train_data_set = data_set[:150, :] # 选取 75% 数据进行训练
     rand_forests = fit(train_data_set, n_estimators = 4, max_features = 20)
     prediction = predict(rand_forests, train_data_set[:, : -1])
     correct = [1 if a == b else 0 for a, b in zip(prediction, train_data_set[:, -1])]
-    print(correct.count(1) / 150)
+    print('训练集的准确率:%.3f%%' % (correct.count(1) / 150 * 100))
     
-    test_data_set = data_set[150:, : -1]
+    test_data_set = data_set[150:, : -1] # 选取 25% 数据进行测试
     test_labels = data_set[150:, -1]
     
     prediction = predict(rand_forests, test_data_set)
     correct = [1 if a == b else 0 for a, b in zip(prediction, test_labels)]
-    print(correct.count(1) / 50)
+    print('测试集的准确率:%.3f%%' % (correct.count(1) / 50 * 100))
 
-    from sklearn.ensemble import RandomForestClassifier
+    from sklearn.ensemble import RandomForestClassifier # 使用 Scikit-Learn 内置的随机森林分类模块进行分类
 
     rf = RandomForestClassifier(max_features = 20, n_estimators = 4) 
     rf.fit(train_data_set[:, :-1], train_data_set[:, -1])
@@ -135,9 +135,8 @@ if __name__ == "__main__":
 
     prediction = rf.predict(train_data_set[:, :-1])
     correct = [1 if a == b else 0 for a, b in zip(prediction, train_data_set[:, -1])]
-    print(correct.count(1) / 150)
+    print('训练集的准确率:%.3f%%' % (correct.count(1) / 150 * 100))
 
     prediction = rf.predict(test_data_set)
     correct = [1 if a == b else 0 for a, b in zip(prediction, test_labels)]
-    print(correct.count(1) / 50)
-    
+    print('测试集的准确率:%.3f%%' % (correct.count(1) / 50 * 100))
