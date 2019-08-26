@@ -5,7 +5,7 @@ class DecisionTree(object):
     '''
     决策树基类
     '''
-    def __init__(self, impurity, leaf_value, min_impurity = 1e-7, max_features = None, max_depth = np.inf, min_samples_split = 2, loss = None):
+    def __init__(self, impurity, leaf_value, min_impurity = 1e-7, max_features = None, max_depth = np.inf, min_samples_split = 2):
         '''
         impurity, str 树分割方法
         impurity_func, func 树分割方法
@@ -15,7 +15,6 @@ class DecisionTree(object):
         max_features：int 需要考虑的特征数
         max_depth: int 树的最大深度
         min_samples_split：int 内部节点需要的最小样本数
-        loss: 
         '''
         self.tree = None
 
@@ -69,7 +68,7 @@ class DecisionTree(object):
                     left, right = self._split(data_set, feature, threshold) # 根据特征和相应的特征值进行左右子树划分
                     
                     if (left.shape[0] > 0) and (right.shape[0] > 0):
-                        split_impurity = self.impurity_func(data_set, left, right) # 计算最优划分
+                        split_impurity = self.impurity_func(data_set[:, n_features:], left[:, n_features:], right[:, n_features:]) # 计算最优划分
                         if split_impurity > largest_impurity:
                             largest_impurity = split_impurity # 更新最优划分
                             best_criteria = dict(
@@ -106,7 +105,7 @@ class DecisionTree(object):
                 return tree
 
         tree = {} # 叶子节点生成
-        value = self.leaf_value_func(data_set[:, -1])
+        value = self.leaf_value_func(data_set[:, n_features:])
         tree['value'] = value
         return tree
     
@@ -151,7 +150,7 @@ class DecisionTreeClassifier(DecisionTree):
     '''
     决策分类树
     '''
-    def __init__(self, impurity, leaf_value):
+    def __init__(self, impurity, leaf_value, min_impurity = 1e-7, max_features = None, max_depth = np.inf, min_samples_split = 2):
         super().__init__(impurity, leaf_value)
         
     def _shannon_ent(self, data_set):
@@ -161,9 +160,10 @@ class DecisionTreeClassifier(DecisionTree):
         data_set, numpy.array 需要进行计算的数据集
         '''
         shannon_ent = 0.0
-        labels_counts = Counter(data_set[:, -1].tolist())
+        data_set = [i[0] for i in data_set.tolist()]
+        labels_counts = Counter(data_set)
         for key in labels_counts:
-            prob = float(labels_counts[key]) / data_set[:, :-1].shape[0]
+            prob = float(labels_counts[key]) / len(data_set)
             shannon_ent -= prob * np.log2(prob)
         return shannon_ent
 
@@ -189,9 +189,10 @@ class DecisionTreeClassifier(DecisionTree):
         right, numpy.array 需要进行计算的右子树数据集
         '''
         gini = 1
-        labels_counts = Counter(data_set[:, -1].tolist())
+        data_set = [i[0] for i in data_set.tolist()]
+        labels_counts = Counter(data_set)
         for key in labels_counts:
-            prob = float(labels_counts[key]) / data_set[:, :-1].shape[0]
+            prob = float(labels_counts[key]) / len(data_set)
             gini -= np.power(prob, 2)
         return gini
     
@@ -216,15 +217,15 @@ class DecisionTreeClassifier(DecisionTree):
         else:
             self.impurity_func = self._gini
         self.leaf_value_func = self._vote
-        data_set = np.concatenate((X, y.reshape(X.shape[0], 1)), axis=1)
+        data_set = np.concatenate((X, y), axis=1)
         self.tree = self._create_tree(data_set, max_features)
 
 class DecisionTreeRegressor(DecisionTree):
     '''
     决策回归树
     '''
-    def __init__(self):
-        super().__init__(impurity = None, leaf_value = None)
+    def __init__(self, impurity = None, leaf_value = None, min_impurity = 1e-7, max_features = None, max_depth = np.inf, min_samples_split = 2):
+        super().__init__(impurity = impurity, leaf_value = leaf_value)
     
     def _var(self, data_set, left, right):
         '''
@@ -256,7 +257,7 @@ class DecisionTreeRegressor(DecisionTree):
         '''
         self.impurity_func = self._var
         self.leaf_value_func = self._mean
-        data_set = np.concatenate((X, y.reshape(X.shape[0], 1)), axis=1)
+        data_set = np.concatenate((X, y), axis=1)
         self.tree = self._create_tree(data_set, max_features)
 
 if __name__ == "__main__":
@@ -270,8 +271,10 @@ if __name__ == "__main__":
     # =========== Classification Tree ===========
     X, y = datasets.make_classification(n_samples = 100, n_features = 5, n_classes = 2) # 生成100个2分类的样本，特征数量为100
     X_train, X_test, y_train, y_test = train_test_split(X, y, test_size = 0.3)
+    y_train = y_train.reshape(X_train.shape[0], 1)
+    y_test = y_test.reshape(X_test.shape[0], 1)
 
-    impurity, leaf_value = 'gain', 'vote'
+    impurity, leaf_value = 'gini', 'vote'
     dtc = DecisionTreeClassifier(impurity, leaf_value)
     dtc.fit(X_train, y_train)
     y_pred = dtc.predict(X_test)
@@ -280,6 +283,8 @@ if __name__ == "__main__":
     # =========== Regression Tree ===========
     X, y = datasets.make_regression(n_samples=100, n_features=1,n_targets=1, noise=2)
     X_train, X_test, y_train, y_test = train_test_split(X, y, test_size = 0.3)
+    y_train = y_train.reshape(X_train.shape[0], 1)
+    y_test = y_test.reshape(X_test.shape[0], 1)
 
     dtr = DecisionTreeRegressor()
     dtr.fit(X_train, y_train)
