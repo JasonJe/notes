@@ -74,18 +74,22 @@ if __name__ == "__main__":
     from sklearn.preprocessing import StandardScaler
     from sklearn.metrics import accuracy_score, mean_squared_error
 
-    # =========== Classification Tree ===========
+    # =========== GBDT Classification Tree ===========
     X, y = datasets.make_classification(n_samples = 100, n_features = 5, n_classes = 2) # 生成100个2分类的样本，特征数量为100
     X_train, X_test, y_train, y_test = train_test_split(X, y, test_size = 0.3)
+    y_train = y_train.reshape(X_train.shape[0], 1)
+    y_test = y_test.reshape(X_test.shape[0], 1)
 
     clf = GBDTClassifier()
     clf.fit(X_train, y_train)
     y_pred = clf.predict(X_test)
     print("Accuracy is: ", accuracy_score(y_test, y_pred))
 
-    # =========== Regression Tree ===========
+    # =========== GBDT Regression Tree ===========
     X, y = datasets.make_regression(n_samples=100, n_features=1,n_targets=1, noise=2)
     X_train, X_test, y_train, y_test = train_test_split(X, y, test_size = 0.3)
+    y_train = y_train.reshape(X_train.shape[0], 1)
+    y_test = y_test.reshape(X_test.shape[0], 1)
 
     clf = GBDTRegressor()
     clf.fit(X_train, y_train)
@@ -97,7 +101,7 @@ if __name__ == "__main__":
     cmap = plt.get_cmap('viridis')
     test = plt.scatter(366 * X_test, y_test, color = cmap(0.5), s=10)
     pred = plt.scatter(366 * X_test, y_pred, color = 'red', s=10)
-    plt.suptitle("Regression Tree")
+    plt.suptitle("GBDT Regression Tree")
     plt.title("Mse: %.2f" % mse, fontsize=10)
     plt.xlabel('X')
     plt.ylabel('y')

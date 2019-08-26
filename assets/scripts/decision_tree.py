@@ -55,7 +55,7 @@ class DecisionTree(object):
         '''
         best_criteria = None
         largest_impurity = 0.0
-        n_samples, n_features = data_set[:, :-1].shape
+        n_samples, n_features = data_set[:, :self.n_features].shape
 
         if not max_features:
             features = n_features
@@ -105,7 +105,7 @@ class DecisionTree(object):
                 return tree
 
         tree = {} # 叶子节点生成
-        value = self.leaf_value_func(data_set[:, n_features:])
+        value = self.leaf_value_func(data_set[:, self.n_features:])
         tree['value'] = value
         return tree
     
@@ -202,7 +202,8 @@ class DecisionTreeClassifier(DecisionTree):
 
         y, numpy.array 类别数组
         '''
-        return Counter(y.tolist()).most_common(1)[0][0]
+        y = [i[0] for i in y.tolist()]
+        return Counter(y).most_common(1)[0][0]
     
     def fit(self, X, y, max_features = None):
         '''
@@ -217,6 +218,7 @@ class DecisionTreeClassifier(DecisionTree):
         else:
             self.impurity_func = self._gini
         self.leaf_value_func = self._vote
+        self.n_features = X.shape[1]
         data_set = np.concatenate((X, y), axis=1)
         self.tree = self._create_tree(data_set, max_features)
 
@@ -235,7 +237,7 @@ class DecisionTreeRegressor(DecisionTree):
         left, numpy.array 需要进行计算的左子树数据集
         right, numpy.array 需要进行计算的右子树数据集
         '''
-        variance_reduction = np.var(data_set[:, -1]) - (left.shape[0] / data_set.shape[0] * np.var(left[:, -1]) + right.shape[0] / data_set.shape[0] * np.var(right[:, -1]))
+        variance_reduction = np.var(data_set) - (left.shape[0] / data_set.shape[0] * np.var(left) + right.shape[0] / data_set.shape[0] * np.var(right))
         return np.sum(variance_reduction)
     
     def _mean(self, y):
@@ -257,6 +259,7 @@ class DecisionTreeRegressor(DecisionTree):
         '''
         self.impurity_func = self._var
         self.leaf_value_func = self._mean
+        self.n_features = X.shape[1]
         data_set = np.concatenate((X, y), axis=1)
         self.tree = self._create_tree(data_set, max_features)
 
