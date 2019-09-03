@@ -4,10 +4,10 @@ from collections import Counter
 from decision_tree import DecisionTree
 
 class XGBoostRegressor(DecisionTree):
-    def _split(self, y):
-        '''
-        划分数据集，获得左右子树
-        '''
+    def __init__(self, impurity = None, leaf_value = None, min_impurity = 1e-7, max_features = None, max_depth = np.inf, min_samples_split = 2):
+        super().__init__(impurity = impurity, leaf_value = leaf_value)
+
+    def _divide(self, y):
         col = int(np.shape(y)[1]/2)
         y, y_pred = y[:, :col], y[:, col:]
         return y, y_pred
@@ -18,9 +18,9 @@ class XGBoostRegressor(DecisionTree):
         return 0.5 * (nominator / denonminator)
 
     def _gain_by_taylor(self, y, y1, y2):
-        y, y_pred = self._split(y)
-        y1, y1_pred = self._split(y1)
-        y2, y2_pred = self._split(y2)
+        y, y_pred = self._divide(y)
+        y1, y1_pred = self._divide(y1)
+        y2, y2_pred = self._divide(y2)
 
         true_gain = self._gain(y1, y1_pred)
         false_gain = self._gain(y2, y2_pred)
@@ -28,7 +28,7 @@ class XGBoostRegressor(DecisionTree):
         return true_gain + false_gain - gain
     
     def _approximate_update(self, y):
-        y, y_pred = self._split(y)
+        y, y_pred = self._divide(y)
         gradient = np.sum((y - y_pred), axis = 0)
         hessian = np.sum(np.ones_like(y), axis = 0)
         update_approximation = gradient / hessian
@@ -37,11 +37,13 @@ class XGBoostRegressor(DecisionTree):
     def fit(self, X, y):
         self.impurity_func = self._gain_by_taylor
         self.leaf_value_func = self._approximate_update
-        super().fit(X, y)
-
+        
+        self.n_features = X.shape[1]
+        data_set = np.concatenate((X, y), axis=1)
+        self.tree = self._create_tree(data_set, max_features = None)
 
 class XGBoost(object):
-    def __init__(self, n_estimators, learning_rate, min_samples_split, min_impurity, max_depth):
+    def __init__(self, n_estimators = 200, learning_rate = 0.5, min_samples_split = 2, min_impurity = 1e-7, max_depth = 4):
         '''
         n_estimators, int 树的数量
         learning_rate, float 梯度下降的学习率
@@ -73,7 +75,7 @@ class XGBoost(object):
             tree = self.trees[i]
             y_and_pred = np.concatenate((y, y_pred), axis = 1)
             tree.fit(X, y_and_pred)
-            update_pred = tree.pedict(X)
+            update_pred = tree.predict(X)
             update_pred = np.reshape(update_pred, (m, -1))
             y_pred += update_pred
     
@@ -95,4 +97,21 @@ class XGBoost(object):
 
 
 if __name__ == "__main__":
-    pass
+    import pandas as pd
+    import matplotlib.pyplot as plt
+    from sklearn import tree, preprocessing, datasets
+    from sklearn.model_selection import train_test_split
+    from sklearn.preprocessing import StandardScaler
+    from sklearn.metrics import accuracy_score, mean_squared_error
+    
+    # =========== XGBoost ===========
+    X, y = datasets.make_classification(n_samples = 100, n_features = 10, n_classes = 2) # 生成100个2分类的样本，特征数量为100
+    X_train, X_test, y_train, y_test = train_test_split(X, y, test_size = 0.3)
+    y_train = y_train.reshape(X_train.shape[0], 1)
+    y_test = y_test.reshape(X_test.shape[0], 1)
+
+    clf = XGBoost()
+    clf.fit(X_train, y_train)
+    y_pred = clf.predict(X_test)
+    print("Accuracy is: ", accuracy_score(y_test, y_pred))
+
