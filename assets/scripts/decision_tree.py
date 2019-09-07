@@ -210,7 +210,7 @@ class DecisionTreeClassifier(DecisionTree):
         训练模型
         
         X, numpy.array 样本数组
-        y, numpy.array 类别数组、
+        y, numpy.array 类别数组
         max_features, int 需要考虑的特征数 
         '''
         if self.impurity == 'gain':
