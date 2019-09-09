@@ -4,7 +4,7 @@
 
 ### 1.1.1 [类和实例](面向对象.md#111-类和实例)
 
-### 1.1.2 [__slots__属性](面向对象.md#112-__slots__属性)
+### 1.1.2 [`__slots__`属性](面向对象.md#112-__slots__属性)
 
 ### 1.1.3 [访问控制](面向对象.md#113-访问控制)
 
@@ -18,21 +18,21 @@
 
 ## 1.2 [正则表达式](正则表达式.md)
 
-### 1.2.1 [re模块](正则表达式.md#121-re模块)
+### 1.2.1 [`re`模块](正则表达式.md#121-re模块)
 
-### 1.2.2 [compile函数](正则表达式.md#122-compile函数)
+### 1.2.2 [`compile`函数](正则表达式.md#122-compile函数)
 
-### 1.2.3 [group、groups和groupdict函数](正则表达式.md#123-groupgroups和groupdict函数)
+### 1.2.3 [`group`、`groups`和`groupdict`函数](正则表达式.md#123-groupgroups和groupdict函数)
 
-### 1.2.4 [match函数](正则表达式.md#124-match函数)
+### 1.2.4 [`match`函数](正则表达式.md#124-match函数)
 
-### 1.2.5 [search函数](正则表达式.md#125-search函数)
+### 1.2.5 [`search`函数](正则表达式.md#125-search函数)
 
-### 1.2.6 [findall和finditer函数](正则表达式.md#126-findall和finditer函数)
+### 1.2.6 [`findall`和`finditer`函数](正则表达式.md#126-findall和finditer函数)
 
-### 1.2.7 [sub和subn函数](正则表达式.md#127-sub和subn函数)
+### 1.2.7 [`sub`和`subn`函数](正则表达式.md#127-sub和subn函数)
 
-### 1.2.8 [split函数](正则表达式.md#128-split函数)
+### 1.2.8 [`split`函数](正则表达式.md#128-split函数)
 
 ### 1.2.9 [正则表达式语法](正则表达式.md#129-正则表达式语法)
 
