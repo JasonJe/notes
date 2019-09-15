@@ -1,4 +1,5 @@
-import os 
+import os
+import re
 import pickle
 import requests
 import urllib
@@ -9,8 +10,9 @@ head_hexsha_path = './head'
 r = Repo(path)
 api_url = "https://www.yuque.com/api/v2"
 
-token = os.environ.get('_YUQUE_') 
-github_token = os.environ.get('_GITHUB_')
+repo_id = os.environ.get('_YUQUE_REPO_ID_')
+token = os.environ.get('_YUQUE_TOKEN_') 
+github_token = os.environ.get('_GITHUB_TOKEN_')
 
 def get_repos(route):
     url = api_url + route
@@ -151,8 +153,12 @@ if __name__ == "__main__":
     index_file = os.path.join(path, 'README.md')
     toc_data = generate_toc_data(index_file)
     toc_text = generate_toc_text(toc_data)
-    
-    repo_id = "417925"
+    resp = update_repos_toc(repo_id, toc_text)
+    print('Update toc: ', resp)
+    image_base_url = 'https://raw.githubusercontent.com/'
+    for url in r.remote().urls:
+        image_base_url = url.replace('.git', '').replace('https://github.com/', image_base_url)
+
     docs_list = get_repo_docs_list(repo_id)
     diff_docs = diff_repo_and_local(docs_list, toc_data)
     print('Diff doc between repo and local is: ', diff_docs) 
@@ -162,6 +168,7 @@ if __name__ == "__main__":
             body = ''
             with open(i['file_path'], 'r') as f:
                 body = f.read()
+            body = body.replace('../assets/images/', image_base_url + '/master/assets/images/')
             resp = create_new_doc(repo_id, i['title'], body, slug = i['slug'], public = 0)
             print('Create new doc response: ', resp)
 
@@ -179,7 +186,6 @@ if __name__ == "__main__":
         body = ''
         with open(i['file_path'], 'r') as f:
             body = f.read()
+        body = body.replace('../assets/images/', image_base_url + '/master/assets/images/')
         resp = update_doc(repo_id, doc_id, i['title'], body, slug = i['slug'], public = 0)
         print('Update doc: ', i['title'], resp)
-
-
