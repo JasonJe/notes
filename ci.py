@@ -157,7 +157,7 @@ if __name__ == "__main__":
             with open(i['file_path'], 'r') as f:
                 body = f.read()
             body = body.replace('../assets/images/', image_base_url + '/master/assets/images/')
-            body = body.replace("## " + title + "\n", "")
+            body = body.replace("## " + i['title'] + "\n", "")
             resp = create_new_doc(repo_id, i['title'], body, slug = i['slug'], public = 0)
             print('Create new doc response: ', i['title'])
 
