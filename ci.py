@@ -1,12 +1,10 @@
 import os
 import re
-import pickle
 import requests
 import urllib
 from git import Repo
 
 path = './'
-head_hexsha_path = './head'
 r = Repo(path)
 api_url = "https://www.yuque.com/api/v2"
 
@@ -99,7 +97,7 @@ def generate_toc_data(index_file):
     for i in re.findall('(\d\..*<\/strong><\/summary>|#{4}.*)', index_body):
         if '</strong></summary>' in i:
             doc_list.append({
-                'slug': i[0],
+                'slug': '#',
                 'depth': 1,
                 'title': i.replace('</strong></summary>', ''),
                 'file_path': ''
@@ -139,16 +137,6 @@ def diff_commit_files(old_commit_hexsha):
     change_files = r.git.diff(old_commit_hexsha, name_only = True)
     return [os.path.join(path, i) for i in change_files.split('\n') if i.rsplit(r'.')[-1].lower() == 'md']
 
-def dump_hexsha():
-    with open(head_hexsha_path, 'wb') as f:
-        pickle.dump(r.head.commit.hexsha, f)
-
-def load_hexsha():
-    head_hexsha = ''
-    with open(head_hexsha_path, 'rb') as f:
-        head_hexsha = pickle.load(f)
-    return head_hexsha
-
 if __name__ == "__main__":
     index_file = os.path.join(path, 'README.md')
     toc_data = generate_toc_data(index_file)
@@ -172,7 +160,8 @@ if __name__ == "__main__":
             resp = create_new_doc(repo_id, i['title'], body, slug = i['slug'], public = 0)
             print('Create new doc response: ', resp)
 
-    repo_hexsha = load_hexsha()
+    hexshas = list_commit_hexsha()
+    repo_hexsha = hexshas[1]
     update_files = diff_commit_files(repo_hexsha)
 
     update_files_slug = []
