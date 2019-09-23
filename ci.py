@@ -164,6 +164,7 @@ if __name__ == "__main__":
     hexshas = list_commit_hexsha()
     repo_hexsha = hexshas[1]
     update_files = diff_commit_files(repo_hexsha)
+    print("Update files: ", update_files)
 
     update_files_slug = []
     for i in toc_data:

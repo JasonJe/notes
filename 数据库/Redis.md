@@ -782,7 +782,165 @@ Reading messages... (press Ctrl-C to quit)
 
 文件事件和时间事件之间是合作关系，服务器会轮流处理这两种事件。并且由于文件事件和时间事件的处理都是同步、有序、原子地执行的，服务器也不会终端正在执行的事件处理，也不会对事件进行抢占。
 
-### 5.6.8 数据淘汰策略
+### 5.6.8 内存回收机制和数据淘汰策略
+
+* 内存回收
+
+`Redis` 采用两种算法进行内存回收，引用计数法和`LRU`算法，其中引用计算法类似与`Python`的内存回收机制，即`Redis` 通过跟踪中 `redisObject` 引用计数信息，在适当的时候自动释放对象并进行内存回收。
+
+**引用计数回收：**
+
+对象的计数信息变化大致如下：
+
+1. 创建对象：创建一个新对象的时候，引用计数的值初始化为`1`；
+
+2. 操作对象：当对象被新程序使用时，引用计数值会被增加`1`（`incrRefCount`）；
+
+3. 操作对象：当对象不被一个程序使用时候，引用计数会被减`1`（`decrRefCount`）；
+
+4. 释放对象：当对象的引用计数值变为`0`时候，对象占用的内存会被释放。
+
+**`LRU`回收（`Least Frequently Used`）：**
+
+在内存有限的情况下，当内存不足时，选择最近一段时间内，最久未使用的对象将其淘汰。
+
+*注：* 在操作系统中 `LRU` 算法淘汰的不是内存中的对象，而是页。当内存中数据不足时，通过`LRU`算法，选择一页（一般是`4KB`），将其交换到虚拟内存区（`Swap`区）。
+
+`Redis`中的`redisObject`定义如下：
+
+```c
+#define REDIS_LRU_BITS 24
+#define REDIS_LRU_CLOCK_MAX ((1<<REDIS_LRU_BITS)-1) /* Max value of obj->lru */
+#define REDIS_LRU_CLOCK_RESOLUTION 1000 /* LRU clock resolution in ms */
+typedef struct redisObject {
+    unsigned type:4;
+    unsigned encoding:4;
+    unsigned lru:REDIS_LRU_BITS; /* lru time (relative to server.lruclock) */\
+    int refcount;
+    void *ptr;
+} robj;
+```
+
+其中的`refcount`是引用计数器，而`lru`是与`server.lruclock`的差值，这个变量会在定时器中定时刷新，获取当前系统的毫秒值，作为`LRU`的时钟数，共占位`24`个。
+
+```c
+...
+/* volatile-lru and allkeys-lru policy */
+else if (server.maxmemory_policy == REDIS_MAXMEMORY_ALLKEYS_LRU ||
+    server.maxmemory_policy == REDIS_MAXMEMORY_VOLATILE_LRU)
+{
+	struct evictionPoolEntry *pool = db->eviction_pool;
+ 
+	while(bestkey == NULL) {
+		evictionPoolPopulate(dict, db->dict, db->eviction_pool);
+		/* Go backward from best to worst element to evict. */
+		for (k = REDIS_EVICTION_POOL_SIZE-1; k >= 0; k--) {
+			if (pool[k].key == NULL) continue;
+			de = dictFind(dict,pool[k].key);
+ 
+			/* Remove the entry from the pool. */
+			sdsfree(pool[k].key);
+			/* Shift all elements on its right to left. */
+			memmove(pool+k,pool+k+1,
+				sizeof(pool[0])*(REDIS_EVICTION_POOL_SIZE-k-1));
+			/* Clear the element on the right which is empty
+			 * since we shifted one position to the left.  */
+			pool[REDIS_EVICTION_POOL_SIZE-1].key = NULL;
+			pool[REDIS_EVICTION_POOL_SIZE-1].idle = 0;
+ 
+			/* If the key exists, is our pick. Otherwise it is
+			 * a ghost and we need to try the next element. */
+			if (de) {
+				bestkey = dictGetKey(de);
+				break;
+			} else {
+				/* Ghost... */
+				continue;
+			}
+		}
+	}
+}
+
+#define EVICTION_SAMPLES_ARRAY_SIZE 16
+void evictionPoolPopulate(dict *sampledict, dict *keydict, struct evictionPoolEntry *pool) {
+    int j, k, count;
+    dictEntry *_samples[EVICTION_SAMPLES_ARRAY_SIZE];
+    dictEntry **samples;
+    if (server.maxmemory_samples <= EVICTION_SAMPLES_ARRAY_SIZE) {
+        samples = _samples;
+    } else {
+        samples = zmalloc(sizeof(samples[0])*server.maxmemory_samples);
+    }
+ 
+#if 1 /* Use bulk get by default. */
+    count = dictGetRandomKeys(sampledict,samples,server.maxmemory_samples);
+#else
+    count = server.maxmemory_samples;
+    for (j = 0; j < count; j++) samples[j] = dictGetRandomKey(sampledict);
+#endif
+ 
+    for (j = 0; j < count; j++) {
+        unsigned long long idle;
+        sds key;
+        robj *o;
+        dictEntry *de;
+        de = samples[j];
+        key = dictGetKey(de);
+        if (sampledict != keydict) de = dictFind(keydict, key);
+        o = dictGetVal(de);
+       
+        idle = estimateObjectIdleTime(o);
+        k = 0;
+        
+        while (k < REDIS_EVICTION_POOL_SIZE &&
+               pool[k].key &&
+               pool[k].idle < idle) k++;
+        if (k == 0 && pool[REDIS_EVICTION_POOL_SIZE-1].key != NULL) {
+            /* Can't insert if the element is < the worst element we have
+             * and there are no empty buckets. */
+            continue;
+        } else if (k < REDIS_EVICTION_POOL_SIZE && pool[k].key == NULL) {
+            /* Inserting into empty position. No setup needed before insert. */
+        } else {
+            if (pool[REDIS_EVICTION_POOL_SIZE-1].key == NULL) {
+                memmove(pool+k+1,pool+k,
+                    sizeof(pool[0])*(REDIS_EVICTION_POOL_SIZE-k-1));
+            } else {
+                /* No free space on right? Insert at k-1 */
+                k--;
+                /* Shift all elements on the left of k (included) to the
+                 * left, so we discard the element with smaller idle time. */
+                sdsfree(pool[0].key);
+                memmove(pool,pool+1,sizeof(pool[0])*k);
+            }
+        }
+        pool[k].key = sdsdup(key);
+        pool[k].idle = idle;
+    }
+   if (samples != _samples) zfree(samples);
+}
+
+unsigned long long estimateObjectIdleTime(robj *o) {
+    unsigned long long lruclock = LRU_CLOCK();
+    if (lruclock >= o->lru) {
+        return (lruclock - o->lru) * REDIS_LRU_CLOCK_RESOLUTION;
+    } else {
+        return (lruclock + (REDIS_LRU_CLOCK_MAX - o->lru)) *
+                    REDIS_LRU_CLOCK_RESOLUTION;
+    }
+}
+```
+
+上面这段代码是`Redis`实现`LRU`算法的过程，它会基于`server.maxmemory_samples`配置选取固定数目（默认为`16`条）的`key`，然后`estimateObjectIdleTime`计算`lru`时间，根据这个时间来在数据库中升序排序，将末尾的元素删除，即淘汰最近最久没有访问的`key`。
+
+`maxmemory_samples`的值越大，`Redis`的近似`LRU`算法就越接近于严格`LRU`算法，但是相应消耗也变高。所以，频繁的进行这种内存回收是会降低`Redis`性能的，主要是查找回收节点和删除需要回收节点的开销。
+
+一般配置`Redis`时候，尽量不进行这种内存溢出的回收操作。
+
+若是启用了`Redis`快照功能，应该设置`maxmemory`值为系统可使用内存的`45%`，因为快照时需要一倍的内存来复制整个数据集，也就是说如果当前已使用`45%`，在快照期间会变成`95%(45%+45%+5%)`，其中`5%`是预留给其他的开销。 如果没开启快照功能，`maxmemory`最高能设置为系统可用内存的`95%`。
+
+
+* 数据淘汰策略
 
 在 `Redis` 中，允许用户设置最大使用内存大小 `server.maxmemory`，在内存限定的情况下是很有用的。
 
@@ -805,6 +963,7 @@ Reading messages... (press Ctrl-C to quit)
 使用 `Redis` 缓存数据时，为了提高缓存命中率，需要保证缓存数据都是**热点数据**。可以将内存最大使用量设置为热点数据占用的内存量，然后启用 `allkeys-lru` 淘汰策略，将最近最少使用的数据淘汰。
 
 `Redis 4.0` 引入了 `volatile-lfu` 和 `allkeys-lfu` 淘汰策略，`LFU` 策略通过统计访问频率，将访问频率最少的键值对淘汰。
+
 
 ### 5.6.9 分布式相关
 
@@ -951,6 +1110,23 @@ for process in process_list:
 for process in process_list:
     process.join()
 ```
+
+### 5.6.9 相关问题
+
+* `Redis` 和 `Memcache` 区别
+
+1. `Redis`不仅仅支持简单的`Key-Value`类型的数据，同时还提供`List`，`Set`，`Sort Set`，`Hash`等数据结构的存储。`Memcache`支持简单的数据类型，`String`。
+
+2. `Redis`支持数据的备份，即`Master-Slave`模式的数据备份。
+
+3. `Redis`支持数据的持久化（`AOF, RDB`），可以将内存中的数据保持在磁盘中，重启的时候可以再次加载进行使用,而`Memecache`把数据全部存在内存之中。
+
+4. `Redis`的速度比`Memcached`快很多。
+
+5. `Memcached`是多线程，非阻塞`IO`复用的网络模型；`Redis`使用单线程的`IO`复用模型。
+
+
+
 
 ### 5.6.10 扩展阅读
 
