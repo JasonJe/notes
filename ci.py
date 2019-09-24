@@ -178,5 +178,6 @@ if __name__ == "__main__":
         with open(i['file_path'], 'r') as f:
             body = f.read()
         body = body.replace('../assets/images/', image_base_url + '/master/assets/images/')
+        body = body.replace("## " + i['title'] + "\n", "")
         resp = update_doc(repo_id, doc_id, i['title'], body, slug = i['slug'], public = 0)
         print('Update doc: ', i['title'])
