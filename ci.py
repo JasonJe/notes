@@ -158,7 +158,7 @@ if __name__ == "__main__":
                 body = f.read()
             body = body.replace('../assets/images/', image_base_url + '/master/assets/images/')
             body = body.replace("## " + i['title'] + "\n", "")
-            resp = create_new_doc(repo_id, i['title'], body, slug = i['slug'], public = 0)
+            resp = create_new_doc(repo_id, i['title'], body, slug = i['slug'], public = 1)
             print('Create new doc response: ', i['title'])
 
     hexshas = list_commit_hexsha()
@@ -179,5 +179,5 @@ if __name__ == "__main__":
             body = f.read()
         body = body.replace('../assets/images/', image_base_url + '/master/assets/images/')
         body = body.replace("## " + i['title'] + "\n", "")
-        resp = update_doc(repo_id, doc_id, i['title'], body, slug = i['slug'], public = 0)
+        resp = update_doc(repo_id, doc_id, i['title'], body, slug = i['slug'], public = 1)
         print('Update doc: ', i['title'])

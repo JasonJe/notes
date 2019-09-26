@@ -964,7 +964,6 @@ unsigned long long estimateObjectIdleTime(robj *o) {
 
 `Redis 4.0` 引入了 `volatile-lfu` 和 `allkeys-lfu` 淘汰策略，`LFU` 策略通过统计访问频率，将访问频率最少的键值对淘汰。
 
-
 ### 5.6.9 分布式相关
 
 #### 复制
