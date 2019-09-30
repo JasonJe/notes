@@ -55,7 +55,7 @@ def create_new_doc(id_or_namespace, title, body, slug = "", public = 0, format_ 
     return response.json()
 
 def update_doc(id_or_namespace, doc_id, title, body, slug = "", public = 0):
-    data = "title=%s&slug=%s&public=%s&body=%s" % (urllib.parse.quote(title), slug, str(public), urllib.parse.quote(body))
+    data = "title=%s&slug=%s&public=%s&body=%s&format=markdown" % (urllib.parse.quote(title), slug, str(public), urllib.parse.quote(body))
     url = api_url + '/repos/' + id_or_namespace + '/docs/' + doc_id
     headers = {
         'x-auth-token': token,
