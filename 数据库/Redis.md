@@ -964,7 +964,205 @@ unsigned long long estimateObjectIdleTime(robj *o) {
 
 `Redis 4.0` 引入了 `volatile-lfu` 和 `allkeys-lfu` 淘汰策略，`LFU` 策略通过统计访问频率，将访问频率最少的键值对淘汰。
 
-### 5.6.9 分布式相关
+### 5.6.9 底层数据结构
+
+上述[数据类型](#562-数据类型)介绍了`Redis`的常用基本数据类型，每一种数据类型内部包含多种数据结构。
+
+可以使用`object encoding`指令来查看具体的数据结构：
+
+```bash
+127.0.0.1:6379> set name jason
+OK
+127.0.0.1:6379> set age 18
+OK
+127.0.0.1:6379> object encoding name
+"embstr"
+127.0.0.1:6379> object encoding age
+"int"
+```
+* 数据结构类型
+
+|底层数据结构|编码常量|`object encoding`指令输出|
+|:--:|:--:|:--:|
+|整数类型|`REDIS_ENCODING_INT`|`"int"`|
+|`embstr`字符串类型|`REDIS_ENCODING_EMBSTR`|`"embstr"`|
+|整数类型|`REDIS_ENCODING_RAW`|`"raw"`|
+|整数类型|`REDIS_ENCODING_HT`|`"ziplist"`|
+|整数类型|`REDIS_ENCODING_LINKEDLIST`|`"ziplist"`|
+|整数类型|`REDIS_ENCODING_ZIPLIST`|`"ziplist"`|
+|整数类型|`REDIS_ENCODING_INTSET`|`"intset"`|
+|跳表和字典|`REDIS_ENCODING_SKIPLIST`|`"skiplist"`|
+
+##### 数据模型
+
+当使用`set hello world`时，会涉及的数据模型如下图所示：
+
+![数据模型](../assets/images/569_01.png)
+
+在`Redis`中，存储会涉及到内存分配器(`jemalloc`)，简单动态字符串(`sds`)，字典实体(`dictEntry`)， 数据类型及内部编码、`redisObject`等。
+
+- * `dictEntry`：`Redis`是`key-value`的数据库，每个键值对都是一个`dictEntry`，其包含`3`部分内容：`key`的指针，`val`的指针，`next`的指针（指向下一个`dictEntry`，形成链表，其可将多个哈希值相同的键值对链接在一起，通过**链地址法**解决哈希冲突问题）；
+
+- * `sds`：`Simple Dynamic String`，存储字符串数据；
+
+- * `redisObject`：具体存储`Redis`数据的对象，其中的`type`字段表示对象的数据类型，`ptr`字段指向对象的地址。
+
+- * `jemalloc`：`Redis`将`jemalloc`作为默认内存分配器，减小内存碎片。`jemalloc`在`64`位系统中，将内存空间划分为小、大、巨大三个范围；每个范围内又划分了许多小的内存块单位；当Redis存储数据时，会选择大小最合适的内存块进行存储。
+
+1. `STRING`
+
+`Redis`的字符串类型在底层是以字节数组的形式存在的，称为`sds`。
+
+```c
+struct SDS<T> {
+  T capacity;     // 数组容量
+  T len;          // 数组长度
+  byte[] content; // 数组内容
+}
+```
+
+而其的编码类型有`int`，`embstr`，`raw`三种。
+
+- * `int`：保存可以使用`long`类型表示的整数值；
+
+- * `raw`：保存长度大于`44`字节的字符串（`Redis 3.2`之前为`39`字节）；
+
+![raw编码](../assets/images/569_02.png)
+
+- * `embstr`：保存长度小于`44`字节的字符串（`Redis 3.2`之前为`39`字节）。
+
+![embstr编码](../assets/images/569_03.png)
+
+`embstr`的`redisObject`和`sds`是连续的，只需要分配一次内存；而`raw`需要分别为`redisObject`和`sds`分配内存，即需要分配两次内存。内存释放也是同理。
+
+但`embstr`也有明显的缺点：例如要增加长度，`redisObject`和`sds`都需要重新分配内存。
+
+2. `LIST`
+
+列表对象的底层编码最开始是`ziplist`（压缩列表）或者 `linkedlist`（双端列表）实现的。现在是通过`quicklist`（快速列表）实现的。
+
+- * `ziplist`
+
+其是为了节省内存而开发的，通过特殊编码在连续的内存块中组成顺序的数据结构，在内部结构中，节点与节点之间不存在指针的指向，而是多个元素相邻，没有间隔。
+
+```c
+struct ziplist<T> {
+    int32 zlbytes;       // 整个压缩列表占用字节数
+    int32 zltail_offset; // 最后一个元素距离压缩列表起始位置的偏移量，用于快速定位到最后一个节点
+    int16 zllength;      // 元素个数
+    T[] entries;         // 元素内容列表，挨个挨个紧凑存储
+    int8 zlend;          // 标志压缩列表的结束，值恒为 0xFF
+}
+```
+
+![ziplist](../assets/images/569_04.png)
+
+压缩列表占用内存少，但是顺序结构的设计，其插入删除元素也比较复杂。
+
+- * `linkedlist`
+
+其是一种双向列表的结构，节点中存在`prev`，`next`，`head`，`tail`指针，能进行前置、后置、表头、表尾节点的获取，复杂度都在`O(1)`。
+
+![linkedlist](../assets/images/569_05.png)
+
+- * `quicklist`
+
+`quicklist`是基于`ziplist`和`linkedlist`的优点和特点开发的，结合了数组和链表的优点。
+
+```c
+struct ziplist {
+    ...
+}
+struct ziplist_compressed {
+    int32 size;
+    byte[] compressed_data;
+}
+struct quicklistNode {
+    quicklistNode* prev;
+    quicklistNode* next;
+    ziplist* zl;   // 指向压缩列表
+    int32 size;    // ziplist 的字节总数
+    int16 count;   // ziplist 中的元素数量
+    int2 encoding; // 存储形式 2bit，原生字节数组还是 LZF 压缩存储
+    ...
+}
+struct quicklist {
+    quicklistNode* head;
+    quicklistNode* tail;
+    long count;        // 元素总数
+    int nodes;         // ziplist 节点的个数
+    int compressDepth; // LZF 算法压缩深度
+    ...
+}
+```
+
+![quicklist](../assets/images/569_06.png)
+
+为了进一步节约空间，`Redis`会对`ziplist`进行压缩，同时还可以选择压缩深度。
+
+其中`list-max-ziplist-size`配置决定`ziplist`的存储长度，`list-compress-depth`配置决定压缩的深度。
+
+为了快速进行`push`、`pop`等操作，默认`quicklist`的首尾两个`ziplist`不进行压缩，此时的深度为`1`。
+
+而深度为`2`时，`quicklist`的首尾前两个 `ziplist` 都不压缩，以此类推。
+
+3. `HASH`
+
+`HASH`对象的底层编码是`ziplist`（压缩列表）或者`hashtable`（字典\散列表）实现的。
+
+设置键值对时，如果每个值的字节数不超过`64`，则默认使用`ziplist`，当有值的字节数超过`64`时，此时默认的数据结构变为`hashtable`。
+
+`HASH`对象只有同时满足下面两个条件时，才会使用`ziplist`（压缩列表）：
+
+* `HASH`中元素数量小于`512`个；
+
+* `HASH`中所有键值对的键和值字符串长度都小于`64`字节。
+
+`Redis`中的 `dict` 结构内部包含两个`hashtable`，通常情况下只有一个 `hashtable` 是有值的。但是在 `dict` 扩容缩容时，需要分配新的 `hashtable`，然后进行渐进式搬迁，这时两个 `hashtable` 存储的分别是旧的 `hashtable` 和新的` hashtable`。待搬迁结束后，旧的 `hashtable` 被删除，新的 `hashtable` 取代之。
+
+4. `SET`
+
+`SET`对象的底层编码是`intset`（整数集）或者是`hashtable`。
+
+当数据**都是整数**并且数量不多时，使用`intset`作为底层数据结构；当有除整数以外的数据或者数据量增多时，使用`hashtable`作为底层数据结构。
+
+```c
+typedef struct intset {
+    uint32_t encoding; // 编码方式
+    uint32_t length;   // 集合包含的元素数量
+    int8_t contents[]; // 保存元素的数组
+} intset;
+```
+
+`intset`底层实现为有序、无重复数的数组。`intset`的整数类型可以是`16`位的、`32`位的、`64`位的。如果数组里所有的整数都是`16`位长度的，新加入一个`32`位的整数，那么整个`16`的数组将升级成一个`32`位的数组。升级可以提升`intset`的灵活性，又可以节约内存，但不可逆。
+
+5. `ZSET`
+
+`ZSET`对象的底层编码是`ziplist`（压缩列表）或者是`skiplist`（跳跃表）。
+
+```c
+typedef struct zskiplist {
+    struct zskiplistNode *header, *tail; // 表头节点和表尾节点
+    unsigned long length;                // 表中节点的数量
+    int level;                           // 表中层数最大的节点的层数
+} zskiplist;
+
+typedef struct zskiplistNode {
+    robj *obj;                         // 成员对象
+    double score;                      // 分值
+    struct zskiplistNode *backward;    // 后退指针
+    struct zskiplistLevel {            // 层
+        struct zskiplistNode *forward; // 前进指针
+        unsigned int span;             // 跨度---前进指针所指向节点与当前节点的距离
+    } level[];
+} zskiplistNode;
+```
+
+跳表是在链表的基础上使用二分法的思想，其开发难度比红黑树容易得多，并且在各方面性能上表现很好，可以快速进行查询、插入、删除操作，所以在`Redis`上使用跳表而不是红黑树。
+
+基于链表的二分查找，支持快速的插入、删除，其时间复杂度都为`O(logn)`。
+
+### 5.6.10 分布式相关
 
 #### 复制
 
@@ -978,7 +1176,6 @@ unsigned long long estimateObjectIdleTime(robj *o) {
 
 ```bash
 $ ./redis-server ../redis8000.conf --port 8000 # master 节点
-
 $ ./redis-server ../redis8001.conf --port 8001 --slaveof 127.0.0.1 8000 # slave 从节点
 $ ./redis-server ../redis8002.conf --port 8002 --slaveof 127.0.0.1 8000 # slave 从节点
 $ ./redis-server ../redis8003.conf --port 8003 --slaveof 127.0.0.1 8000 # slave 从节点
@@ -998,7 +1195,7 @@ $ ./redis-server ../redis8003.conf --port 8003 --slaveof 127.0.0.1 8000 # slave 
 
 值得注意的是，当`slave`跟`master`的连接断开时，`slave`可以自动的重新连接`master`，在`redis2.8`版本之前，每当slave进程挂掉重新连接master的时候都会开始新的一轮全量复制。如果`master`同时接收到多个`slave`的同步请求，则master只需要备份一次`RDB`文件。
 
-![复制过程](../assets/images/569_01.jpg)
+![复制过程](../assets/images/5610_01.jpg)
 
 `master`除了备份`RDB`文件之外还会维护一个环形队列，以及环形队列的写索引和`slave`同步的全局`offset`。
 
@@ -1012,7 +1209,7 @@ $ ./redis-server ../redis8003.conf --port 8003 --slaveof 127.0.0.1 8000 # slave 
 
 增量复制是由`psync`命令实现的，`slave`可以通过`psync`命令来让`Redis`进行增量复制，当然最终是否能够增量复制取决于环形队列的大小和`slave`的断线时间长短和重连的这个`master`是否是之前的`master`。
 
-![增量复制](../assets/images/569_02.jpg)、
+![增量复制](../assets/images/5610_02.jpg)、
 
 ```bash
 repl-backlog-size 1mb # 环形队列大小配置参数
@@ -1110,7 +1307,7 @@ for process in process_list:
     process.join()
 ```
 
-### 5.6.9 相关问题
+### 5.6.11 相关问题
 
 * `Redis` 和 `Memcache` 区别
 
@@ -1127,7 +1324,7 @@ for process in process_list:
 
 
 
-### 5.6.10 扩展阅读
+### 5.6.12 扩展阅读
 
 [分布式之 Redis 复习精讲](http://blog.jobbole.com/114050/)
 
