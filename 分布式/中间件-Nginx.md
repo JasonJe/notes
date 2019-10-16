@@ -34,11 +34,27 @@
 
 基本的网络事件，是放在`worker`进程中来处理的，`worker`之间的进程是对等的，只可能在相同的`worker`中处理，一个`worker`进程不可能处理其他进程的请求。 
 
-`worker`的个数，一般设置成与`CPU`的个数相同。
+`worker`的个数，**一般设置成与`CPU`的个数相同**。
 
-太多的`worker`数，只会导致进程相互竞争`CPU`资源，从而带来不必要的上下文切换
+太多的`worker`数，只会导致进程相互竞争`CPU`资源，从而带来不必要的上下文切换。
 
-`master`进程会先建立好需要`listen`的`socket`，即`fork`生成子进程`workers`，子进程们继承了父进程`master`的所有属性，当然也包括已经建立好的`socket`，但`socket`并不是同一个，只是每个进程的`socket`会监控在同一个`ip`地址与端口。
+每个`worker`进程从`master`进程`fork`过来，它们继承了父进程`master`的所有属性，当然也包括已经建立好的`socket`(`listenfd`)，但`socket`并不是同一个，只是每个进程的`socket`会监控在同一个`ip`地址与端口。
+
+所有`worker`进程的`listenfd`会在新连接到来时变得可读，为保证只有一个进程处理该连接，所有`worker`进程在注册`listenfd`读事件前抢`accept_mutex`，抢到互斥锁的那个进程注册`listenfd`读事件，在读事件里调用`accept`接受该连接。
+
+这种进程模型的**优点：**
+
+a. 每个`worker`进程独立，不需加锁，省去锁操作的开销；
+
+b. 独立的进程保证进程间互不干扰，服务不中断。
+
+* `connection`
+
+`Nginx`中每个进程的连接数都有一个最大上限，其大致等于系统的**最大句柄数(`ulimit -n`) - 已经打开的`socket`连接数**。
+
+`Nginx`通过`worker_connections`来设置**每个进程支持的最大连接数**，其实现是通过连接池进行管理的，每个`worker`都独立一个连接池，其大小为`worker_connections`，其实际为`worker_connections`大小的`ngx_connection_t`（`nginx`对连接的封装）数组。同时，还存在一个`free_connections`来保存空闲的`ngx_connection_t`，每获取一个连接时候，就从中获取一个，用完再放回。
+
+`Nginx`其作为反向代理服务器时，能进行的最大并发数为` worker_connections * worker_processes/2 `， 因为每个并发会建立与客户端的连接和与后端服务的连接，会占用两个连接。
 
 * 惊群现象
 
