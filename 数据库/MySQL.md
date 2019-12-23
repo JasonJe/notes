@@ -781,28 +781,42 @@ select * from t1 join t2 using(ID) where t1.c=10 and t2.d=20;
 
 而当业务不进行死锁检测时候，对应业务是有损的，因为并不能保证百分百不出现死锁。
 
-### 5.3.11 扩展阅读
+### 5.3.11 `MVCC`
 
-[10款常见MySQL高可用方案选型解读](https://cloud.tencent.com/developer/article/1120513)
+多版本并发控制(`Multi-Version Concurrency Control`, `MVCC`)是一种并发控制的方法，一般在数据库管理系统中，实现对数据库的并发访问；在编程语言中实现事务内存。
 
-[数据库 SQL 优化大总结之：百万级数据库优化方案](https://hsutimes.club/article/108/)
+在数据库中，每一个写操作都创建一个新版本的数据，读操作会从有限多个版本的数据中挑选一个最合适的结果直接返回。
 
-[【干货】MySQL数据库开发规范](https://juejin.im/post/5c15c2b3f265da6170070613)
+在这时，读写操作之间的冲突就不需要被关注，而管理和挑选数据的版本就成了`MVCC`需要解决的主要问题。
 
-[支撑日活百万用户的高并发系统，应该如何设计其数据库架构？【石杉的架构笔记】](https://juejin.im/post/5c6a9f25518825787e69e70a?utm_source=gold_browser_extension)
+在 `MySQL` 中，它是 `InnoDB` 存储引擎实现隔离级别的一种具体方式。
 
-*待续补充...*
+`InnoDB` 用于 `MVCC` 的一致性视图 `consistent read view` 就是用于`RC`（读提交）和 `RR`（可重复读）隔离级别的实现。即前面**事务隔离的实现**中提到的 `read view`。
 
-参考链接：
+* 可重复读隔离级别
 
-* [MySQL数据库对象与应用](https://github.com/yumendy/NTES_MySQL_notes/blob/master/chapter2.md)
+`InnoDB` 中每个事务都有唯一的事务`ID`(`transaction id`)，它是在事务开始的时候向 `InnoDB` 的事务系统申请的，是按申请顺序严格递增的。
 
-* [深入解析MySQL视图VIEW](https://www.cnblogs.com/geaozhang/p/6792369.html)
+每行数据也都是有多个版本的。每次事务更新数据的时候，都会生成一个新的数据版本，并且把 `transaction id` 赋值给这个数据版本的事务 `ID`，记为 `row trx_id`。
 
-* [阿里开发强制要求的11条索引创建规范，提高性能](http://news.51cto.com/art/201901/591018.htm)
+同时，旧的数据版本要保留，并且在新的数据版本中，能够有信息可以直接拿到它。
 
-* [MySql查询性能优化](https://cloud.tencent.com/developer/article/1165499)
+在前面的例子里面说的 **`read-view` 回滚操作**就是 `undo log`（回滚日志）。而旧版本就是根据 `undo log` 和当前版本计算出来的。一个事务的所有视图就构成了一致性视图 `read-view`。
 
-* [Mysql 分页查询超过 1000 时变慢的原因](https://oyifan.com/2016/03/23/offsetSlow/)
+在**可重复读隔离级别**下，一旦事务启动，就基于整库制作了一个快照。所以快照就是依据这种**所有数据具有多个版本**的特性创建的。
 
-* [MySQL](https://cyc2018.github.io/CS-Notes/#/notes/MySQL) 
+- * **当前读**
+
+在更新数据时候，都是**先读后写**的，而这个读，只能读当前版本的值，这种规则称为**当前读**(`current read`)。
+
+可重复读的核心就是一致性读(`consistent read`)；而事务更新数据的时候，只能用当前读。如果当前的记录的行锁被其他事务占用的话，就需要进入锁等待。
+
+* 读提交隔离级别
+
+读提交的逻辑和可重复读的逻辑类似，它们最主要的区别是：
+
+- * 在可重复读隔离级别下，只需要在事务开始的时候创建一致性视图，之后事务里的其他查询都共用这个一致性视图；
+
+- * 在读提交隔离级别下，每一个语句执行前都会重新算出一个新的视图。
+
+所以在多事务的情况下，查询事务只能查看已提交事务中最新一个版本的数据。
