@@ -1,0 +1,29 @@
+name: issue_to_yuque
+
+on: 
+  issues:
+    types: [edited, labeled, deleted]
+    
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+    - uses: actions/checkout@v1
+    - name: Set up Python 3.7
+      uses: actions/setup-python@v1
+      with:
+        python-version: 3.7
+    - name: Install dependencies
+      run: |
+        python -m pip install --upgrade pip
+        pip install requests
+    - name: Update yuque repo
+      env:
+        ISPUBLIC: 0
+        YUQUE_REPO: jasonje/notecards
+        YUQUE_API: https://www.yuque.com/api/v2
+        YUQUE_TOKEN: ${{ secrets.YUQUE_TOKEN }}
+        GITHUB_API:  https://api.github.com/repos/jasonje/notes/
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      run: |
+        python issues_to_yuque.py -t ${{ github.event.action }}
