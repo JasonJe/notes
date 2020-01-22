@@ -19,7 +19,7 @@ jobs:
         pip install requests
     - name: Update yuque repo
       env:
-        ISPUBLIC: 0
+        ISPUBLIC: 1
         YUQUE_REPO: jasonje/notecards
         YUQUE_API: https://www.yuque.com/api/v2
         YUQUE_TOKEN: ${{ secrets.YUQUE_TOKEN }}
